@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>高屏澎東職務再設計輔具管理資料庫</title>
+    <meta
+      name="description"
+      content="支援 Excel 匯入、輔具清冊管理、借還紀錄、盤點拍照與 QR 自動配對的 Firebase 靜態網站。"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-block">
+          <p class="brand-kicker">GitHub Pages / Firebase</p>
+          <h1>高屏澎東職務再設計輔具管理資料庫</h1>
+          <p class="brand-copy">
+            匯入既有 Excel、管理輔具與回收清冊、借還紀錄、盤點照片與 QR 配對。
+          </p>
+        </div>
+
+        <nav class="nav-stack">
+          <button class="nav-btn active" data-view-target="dashboard">總覽 / 匯入</button>
+          <button class="nav-btn" data-view-target="assets">輔具清冊</button>
+          <button class="nav-btn" data-view-target="inventory">盤點拍照</button>
+          <button class="nav-btn" data-view-target="loans">借用 / 歸還</button>
+          <button class="nav-btn" data-view-target="cases">個案匯入</button>
+        </nav>
+
+        <div class="sidebar-note">
+          <p>核心流程</p>
+          <ul>
+            <li>Excel 清冊匯入後可直接同步到 Firestore</li>
+            <li>第一張盤點照片可直接成為該輔具主照片</li>
+            <li>批次照片會自動讀取 QR 編號並歸檔到對應輔具</li>
+          </ul>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">營運工作台</p>
+            <h2 id="workspace-title">總覽 / 匯入</h2>
+          </div>
+          <div class="topbar-actions">
+            <div id="user-chip" class="user-chip" hidden></div>
+            <button id="sign-in-btn" class="ghost-btn">Google 登入</button>
+            <button id="sign-out-btn" class="ghost-btn" hidden>登出</button>
+            <button id="refresh-btn" class="primary-btn">重新整理</button>
+            <div id="sync-badge" class="status-badge idle">尚未連線</div>
+          </div>
+        </header>
+
+        <section class="hero-band">
+          <article class="metric-panel">
+            <p>輔具總數</p>
+            <strong id="metric-total-assets">0</strong>
+          </article>
+          <article class="metric-panel">
+            <p>已上傳照片</p>
+            <strong id="metric-photo-assets">0</strong>
+          </article>
+          <article class="metric-panel">
+            <p>借出中</p>
+            <strong id="metric-loaned-assets">0</strong>
+          </article>
+          <article class="metric-panel">
+            <p>最近盤點</p>
+            <strong id="metric-last-inventory">尚無</strong>
+          </article>
+        </section>
+
+        <section class="view active" data-view="dashboard">
+          <div class="split-layout">
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">資料匯入</p>
+                  <h3>將既有 Excel 清冊轉為網站資料</h3>
+                </div>
+                <label class="file-btn">
+                  <input
+                    id="asset-import-input"
+                    type="file"
+                    accept=".xls,.xlsx"
+                    multiple
+                  />
+                  匯入輔具 / 回收清冊
+                </label>
+              </div>
+
+              <div class="import-callout">
+                <p>
+                  建議先匯入你目前資料夾內的兩份清冊，再按「同步到 Firebase」。
+                </p>
+                <button id="sync-assets-btn" class="primary-btn" disabled data-requires-auth>
+                  同步匯入資料到 Firebase
+                </button>
+              </div>
+
+              <div id="import-preview" class="stack-list empty-state">
+                尚未匯入 Excel 檔案。
+              </div>
+            </section>
+
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">統計摘要</p>
+                  <h3>各縣市與類別分布</h3>
+                </div>
+              </div>
+              <div id="county-summary" class="summary-grid"></div>
+              <div id="inventory-feed" class="timeline"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" data-view="assets">
+          <div class="section-head sticky-head">
+            <div>
+              <p class="eyebrow">輔具清冊</p>
+              <h3>查詢、編修、照片預覽與 QR 下載</h3>
+            </div>
+            <div class="toolbar">
+              <input id="asset-search" class="field" type="search" placeholder="搜尋編號、名稱、品牌、備註" />
+              <select id="asset-category-filter" class="field">
+                <option value="">全部類別</option>
+              </select>
+              <select id="asset-county-filter" class="field">
+                <option value="">全部縣市</option>
+              </select>
+              <button id="new-asset-btn" class="ghost-btn">新增輔具</button>
+            </div>
+          </div>
+
+          <div class="split-layout">
+            <section class="surface table-surface">
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>照片</th>
+                      <th>編號</th>
+                      <th>名稱</th>
+                      <th>類別</th>
+                      <th>縣市</th>
+                      <th>目前狀態</th>
+                      <th>位置 / 備註</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="asset-table-body">
+                    <tr>
+                      <td colspan="8" class="muted-cell">尚未載入資料。</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <aside class="surface detail-surface">
+              <div class="section-head compact">
+                <div>
+                  <p class="eyebrow">明細編修</p>
+                  <h3 id="asset-form-title">新增 / 編輯輔具</h3>
+                </div>
+              </div>
+
+              <form id="asset-form" class="form-grid">
+                <input id="asset-id" type="hidden" />
+
+                <label>
+                  編號
+                  <input id="asset-code" class="field" type="text" required />
+                </label>
+                <label>
+                  名稱
+                  <input id="asset-name" class="field" type="text" required />
+                </label>
+                <label>
+                  類別
+                  <input id="asset-category" class="field" type="text" />
+                </label>
+                <label>
+                  縣市
+                  <input id="asset-county" class="field" type="text" />
+                </label>
+                <label>
+                  狀態
+                  <input id="asset-status" class="field" type="text" placeholder="在庫、借出中、報廢..." />
+                </label>
+                <label>
+                  位置
+                  <input id="asset-location" class="field" type="text" />
+                </label>
+                <label>
+                  雲端照片網址
+                  <input
+                    id="asset-photo-url"
+                    class="field"
+                    type="url"
+                    placeholder="可貼上 Google Drive / 圖片網址"
+                  />
+                </label>
+                <label class="span-2">
+                  品牌 / 型號
+                  <input id="asset-brand-model" class="field" type="text" placeholder="可輸入品牌、型號或尺寸" />
+                </label>
+                <label class="span-2">
+                  說明
+                  <textarea id="asset-description" class="field" rows="3"></textarea>
+                </label>
+                <label class="span-2">
+                  備註
+                  <textarea id="asset-remarks" class="field" rows="3"></textarea>
+                </label>
+
+                <div class="span-2 detail-block">
+                  <div class="detail-block-head">
+                    <h4>輔具照片</h4>
+                    <span id="asset-photo-count" class="pill">0 張</span>
+                  </div>
+                  <div id="asset-photo-strip" class="photo-strip"></div>
+                </div>
+
+                <div class="span-2 detail-block">
+                  <div class="detail-block-head">
+                    <h4>QR 預覽</h4>
+                    <button id="download-qr-btn" type="button" class="ghost-btn">
+                      下載 QR
+                    </button>
+                  </div>
+                  <canvas id="asset-qr-canvas" width="220" height="220"></canvas>
+                </div>
+
+                <div class="form-actions span-2">
+                  <button type="submit" class="primary-btn" data-requires-auth>儲存輔具</button>
+                  <button id="reset-asset-form-btn" type="button" class="ghost-btn">清空表單</button>
+                  <button id="delete-asset-btn" type="button" class="ghost-btn danger" data-requires-auth>
+                    刪除此筆
+                  </button>
+                </div>
+              </form>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" data-view="inventory">
+          <div class="split-layout">
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">單件盤點</p>
+                  <h3>拍照後直接比對 QR，首張照片可設為主照片</h3>
+                </div>
+              </div>
+
+              <div class="inventory-form">
+                <label class="file-btn inline">
+                  <input
+                    id="single-photo-input"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                  />
+                  拍攝 / 選取單張照片
+                </label>
+                <input
+                  id="inventory-manual-code"
+                  class="field"
+                  type="text"
+                  placeholder="若 QR 辨識失敗，可手動輸入編號"
+                />
+                <label class="toggle-row">
+                  <input id="inventory-autoupload" type="checkbox" checked />
+                  比對成功後立即上傳到該輔具照片
+                </label>
+              </div>
+
+              <div id="single-inventory-result" class="stack-list empty-state">
+                尚未拍攝照片。
+              </div>
+            </section>
+
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">批次盤點</p>
+                  <h3>一次拍完 10 張也可以，系統會讀 QR 並自動歸檔</h3>
+                </div>
+                <label class="file-btn">
+                  <input id="batch-photo-input" type="file" accept="image/*" multiple />
+                  匯入多張盤點照片
+                </label>
+              </div>
+
+              <div class="batch-toolbar">
+                <p>已辨識成功的照片，可一次上傳到 Firebase Storage。</p>
+                <button id="upload-matched-btn" class="primary-btn" disabled data-requires-auth>
+                  上傳已匹配照片
+                </button>
+              </div>
+
+              <div id="batch-queue" class="stack-list empty-state">
+                尚未加入批次照片。
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" data-view="loans">
+          <div class="split-layout">
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">借用 / 歸還</p>
+                  <h3>記錄借用單位、借還日期與狀態</h3>
+                </div>
+              </div>
+
+              <form id="loan-form" class="form-grid">
+                <label>
+                  輔具編號
+                  <input id="loan-asset-code" class="field" type="text" list="asset-code-options" required />
+                </label>
+                <label>
+                  動作
+                  <select id="loan-action" class="field">
+                    <option value="borrow">借出</option>
+                    <option value="return">歸還</option>
+                  </select>
+                </label>
+                <label>
+                  借用人 / 承辦
+                  <input id="loan-person" class="field" type="text" required />
+                </label>
+                <label>
+                  單位
+                  <input id="loan-unit" class="field" type="text" />
+                </label>
+                <label>
+                  日期
+                  <input id="loan-date" class="field" type="date" required />
+                </label>
+                <label class="span-2">
+                  備註
+                  <textarea id="loan-note" class="field" rows="3"></textarea>
+                </label>
+                <div class="form-actions span-2">
+                  <button type="submit" class="primary-btn" data-requires-auth>儲存借還紀錄</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="surface table-surface">
+              <div class="section-head compact">
+                <div>
+                  <p class="eyebrow">歷史紀錄</p>
+                  <h3>最新借還狀況</h3>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>日期</th>
+                      <th>編號</th>
+                      <th>名稱</th>
+                      <th>動作</th>
+                      <th>借用人 / 單位</th>
+                      <th>備註</th>
+                    </tr>
+                  </thead>
+                  <tbody id="loan-table-body">
+                    <tr>
+                      <td colspan="6" class="muted-cell">尚無借還紀錄。</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" data-view="cases">
+          <div class="split-layout">
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">個案 Excel 匯入</p>
+                  <h3>可整理編號、年度、類別、單位、姓名等欄位</h3>
+                </div>
+                <label class="file-btn">
+                  <input id="case-import-input" type="file" accept=".xls,.xlsx" />
+                  匯入個案 Excel
+                </label>
+              </div>
+              <div class="import-callout">
+                <p>適合整理你後續的個案表單，會自動保留原始欄位內容。</p>
+                <button id="sync-cases-btn" class="primary-btn" disabled data-requires-auth>
+                  同步個案資料到 Firebase
+                </button>
+              </div>
+              <div id="case-preview" class="stack-list empty-state">尚未匯入個案 Excel。</div>
+            </section>
+
+            <section class="surface table-surface">
+              <div class="section-head compact">
+                <div>
+                  <p class="eyebrow">個案資料表</p>
+                  <h3>已同步的個案紀錄</h3>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>編號 / 案號</th>
+                      <th>年度</th>
+                      <th>類別</th>
+                      <th>姓名</th>
+                      <th>單位</th>
+                      <th>其他資訊</th>
+                    </tr>
+                  </thead>
+                  <tbody id="case-table-body">
+                    <tr>
+                      <td colspan="6" class="muted-cell">尚未載入個案資料。</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <datalist id="asset-code-options"></datalist>
+
+    <dialog id="photo-modal" class="photo-modal">
+      <button id="photo-modal-close" class="ghost-btn modal-close" type="button">關閉</button>
+      <img id="photo-modal-image" alt="輔具照片預覽" />
+      <div id="photo-modal-meta" class="photo-modal-meta"></div>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
