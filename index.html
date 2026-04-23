@@ -6,7 +6,7 @@
     <title>高屏澎東職務再設計輔具管理資料庫</title>
     <meta
       name="description"
-      content="單檔 HTML 版，使用 Google Drive 儲存輔具資料、借還紀錄、個案資料與照片。"
+      content="單檔 HTML 版，使用 Firebase 儲存輔具資料、借還紀錄、個案資料與照片。"
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -394,6 +394,12 @@
         gap: 12px;
       }
 
+      .muted-note {
+        margin: 0 0 16px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
       .summary-row {
         display: grid;
         grid-template-columns: 108px 1fr 56px;
@@ -554,6 +560,35 @@
         margin-bottom: 14px;
       }
 
+      .case-option-list,
+      .loan-asset-queue {
+        max-height: 260px;
+        overflow: auto;
+      }
+
+      .case-option,
+      .loan-asset-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 10px;
+        align-items: start;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(31, 54, 120, 0.08);
+        background: rgba(255, 255, 255, 0.88);
+      }
+
+      .case-option strong,
+      .loan-asset-row strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .case-option small,
+      .loan-asset-row small {
+        color: var(--muted);
+      }
+
       .photo-strip {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
@@ -685,7 +720,7 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand-block">
-          <p class="brand-kicker">One File / GitHub Pages / Google Drive</p>
+<p class="brand-kicker">One File / GitHub Pages / Firebase</p>
           <h1>高屏澎東職務再設計輔具管理資料庫</h1>
           <p class="brand-copy">
             這是單檔 HTML 版本。網站本身只要上傳一個 HTML，資料與照片會寫進 Google 雲端硬碟。
@@ -701,12 +736,12 @@
         </nav>
 
         <div class="sidebar-note">
-          <p>Drive 版重點</p>
-          <ul>
-            <li>輔具、借還、個案會存成 Drive 裡的 JSON 檔</li>
-            <li>盤點照片會上傳到同一個 Drive 資料夾底下的子資料夾</li>
-            <li>如果根資料夾 ID 留空，系統會自動在 My Drive 建立資料夾</li>
-          </ul>
+<p>單檔版重點</p>
+<ul>
+<li>輔具、借還、個案會同步到 Firebase</li>
+<li>盤點照片會先壓縮，再直接上傳到 Google Drive</li>
+<li>回收輔具與職再借用清單分開管理</li>
+</ul>
         </div>
       </aside>
 
@@ -718,7 +753,7 @@
           </div>
           <div class="topbar-actions">
             <div id="user-chip" class="user-chip" hidden></div>
-            <button id="sign-in-btn" class="ghost-btn">Google 授權 Drive</button>
+            <button id="sign-in-btn" class="ghost-btn">Google / Firebase 登入</button>
             <button id="sign-out-btn" class="ghost-btn" hidden>清除授權</button>
             <button id="refresh-btn" class="primary-btn">重新整理</button>
             <div id="sync-badge" class="status-badge idle">尚未連線</div>
@@ -727,11 +762,11 @@
 
         <section class="hero-band">
           <article class="metric-panel">
-            <p>輔具總數</p>
+            <p>回收輔具</p>
             <strong id="metric-total-assets">0</strong>
           </article>
           <article class="metric-panel">
-            <p>已上傳照片</p>
+            <p>職再借用清單</p>
             <strong id="metric-photo-assets">0</strong>
           </article>
           <article class="metric-panel">
@@ -748,39 +783,68 @@
           <div class="split-layout">
             <section class="surface">
               <div class="config-card">
-                <strong>先設定這個 HTML 最上方的 `DRIVE_CONFIG.clientId`</strong>
+                <strong>先確認 `FIREBASE_CONFIG` 與 `DRIVE_CONFIG.rootFolderId`</strong>
                 <p>
-                  `rootFolderId` 可以先留空，系統會在你的 Google Drive 自動建立
-                  `高屏澎東職務再設計輔具管理資料庫` 資料夾。
+                  這版會把共用資料寫入 Firebase，盤點照片則會先壓縮再上傳到同一個 Shared Drive。
+                  `DRIVE_CONFIG.rootFolderId` 請填 Shared Drive 內主資料夾的 ID。
                 </p>
               </div>
 
               <div class="section-head">
                 <div>
                   <p class="eyebrow">資料匯入</p>
-                  <h3>把 Excel 清冊匯入後直接同步到 Google Drive</h3>
+                  <h3>兩份 Excel 分開匯入，資料分開同步、照片分開管理</h3>
                 </div>
-                <label class="file-btn">
-                  <input id="asset-import-input" type="file" accept=".xls,.xlsx" multiple />
-                  匯入輔具 / 回收清冊
-                </label>
               </div>
 
-              <div class="import-callout">
-                <p>先匯入 Excel，整理後按下「同步到 Google Drive」。</p>
-                <button id="sync-assets-btn" class="primary-btn" disabled data-requires-auth>
-                  同步匯入資料到 Google Drive
-                </button>
-              </div>
+              <div class="stack-list">
+                <article class="preview-card">
+                  <div class="section-head">
+                    <div>
+                      <p class="eyebrow">回收輔具清單</p>
+                      <h3>`115年1月高屏澎東區回收輔具清冊.xls`</h3>
+                    </div>
+                    <label class="file-btn">
+                      <input id="recycle-import-input" type="file" accept=".xls,.xlsx" />
+                      匯入回收輔具 Excel
+                    </label>
+                  </div>
+                  <div class="import-callout">
+                    <p>依回收清冊表頭解析，寫入 Firebase 的 `recycleAssets` 集合。</p>
+                    <button id="sync-recycle-assets-btn" class="primary-btn" disabled data-requires-auth>
+                      同步回收輔具到 Firebase
+                    </button>
+                  </div>
+                  <div id="recycle-import-preview" class="stack-list empty-state">尚未匯入回收輔具 Excel。</div>
+                </article>
 
-              <div id="import-preview" class="stack-list empty-state">尚未匯入 Excel 檔案。</div>
+                <article class="preview-card">
+                  <div class="section-head">
+                    <div>
+                      <p class="eyebrow">職再借用清單</p>
+                      <h3>`職再輔具、評估、維修工具、耗材編號清單1120210.xlsx`</h3>
+                    </div>
+                    <label class="file-btn">
+                      <input id="project-import-input" type="file" accept=".xls,.xlsx" />
+                      匯入職再清單 Excel
+                    </label>
+                  </div>
+                  <div class="import-callout">
+                    <p>依職再表頭解析，寫入 Firebase 的 `projectAssets` 集合。</p>
+                    <button id="sync-project-assets-btn" class="primary-btn" disabled data-requires-auth>
+                      同步職再清單到 Firebase
+                    </button>
+                  </div>
+                  <div id="project-import-preview" class="stack-list empty-state">尚未匯入職再清單 Excel。</div>
+                </article>
+              </div>
             </section>
 
             <section class="surface">
               <div class="section-head">
                 <div>
                   <p class="eyebrow">統計摘要</p>
-                  <h3>各縣市與類別分布</h3>
+                  <h3>回收縣市分布與最近盤點</h3>
                 </div>
               </div>
               <div id="county-summary" class="summary-grid"></div>
@@ -792,10 +856,14 @@
         <section class="view" data-view="assets">
           <div class="section-head sticky-head">
             <div>
-              <p class="eyebrow">輔具清冊</p>
-              <h3>查詢、編修、照片預覽與 QR 下載</h3>
+              <p class="eyebrow">資料清冊</p>
+              <h3 id="asset-view-title">回收輔具清單</h3>
             </div>
             <div class="toolbar">
+              <select id="asset-dataset-switch" class="field">
+                <option value="recycle">回收輔具清單</option>
+                <option value="project">職再借用清單</option>
+              </select>
               <input id="asset-search" class="field" type="search" placeholder="搜尋編號、名稱、品牌、備註" />
               <select id="asset-category-filter" class="field">
                 <option value="">全部類別</option>
@@ -803,6 +871,7 @@
               <select id="asset-county-filter" class="field">
                 <option value="">全部縣市</option>
               </select>
+              <button id="download-word-btn" class="ghost-btn">下載 Word 清單</button>
               <button id="new-asset-btn" class="ghost-btn">新增輔具</button>
             </div>
           </div>
@@ -889,7 +958,7 @@
               <div class="section-head">
                 <div>
                   <p class="eyebrow">單件盤點</p>
-                  <h3>拍照後讀取 QR，直接上傳到 Google Drive</h3>
+                  <h3>拍照後讀取 QR，先壓縮照片再上傳到 Google Drive</h3>
                 </div>
               </div>
 
@@ -901,7 +970,7 @@
                 <input id="inventory-manual-code" class="field" type="text" placeholder="辨識失敗時可手動輸入編號" />
                 <label class="toggle-row">
                   <input id="inventory-autoupload" type="checkbox" checked />
-                  比對成功後立即上傳
+                  比對成功後立即壓縮並上傳
                 </label>
               </div>
 
@@ -921,7 +990,7 @@
               </div>
 
               <div class="batch-toolbar">
-                <p>已匹配成功的照片可一次上傳到 Google Drive 照片資料夾。</p>
+                <p>已匹配成功的照片會先壓縮，再一次上傳到 Google Drive。</p>
                 <button id="upload-matched-btn" class="primary-btn" disabled data-requires-auth>
                   上傳已匹配照片
                 </button>
@@ -937,13 +1006,17 @@
             <section class="surface">
               <div class="section-head">
                 <div>
-                  <p class="eyebrow">借用 / 歸還</p>
-                  <h3>借還資料會寫入 Google Drive 的 `loans.json`</h3>
+                  <p class="eyebrow">職再借用清單</p>
+                  <h3>借還資料會寫入 Firebase 的 `loanRecords` 集合</h3>
                 </div>
               </div>
+              <p class="muted-note">這裡只使用 `職再輔具、評估、維修工具、耗材編號清單1120210.xlsx` 匯入的資料。</p>
 
               <form id="loan-form" class="form-grid">
-                <label>輔具編號 <input id="loan-asset-code" class="field" type="text" list="asset-code-options" required /></label>
+                <label>
+                  借用者（Google 驗證）
+                  <input id="loan-person" class="field" type="text" required />
+                </label>
                 <label>
                   動作
                   <select id="loan-action" class="field">
@@ -951,9 +1024,36 @@
                     <option value="return">歸還</option>
                   </select>
                 </label>
-                <label>借用人 / 承辦 <input id="loan-person" class="field" type="text" required /></label>
                 <label>單位 <input id="loan-unit" class="field" type="text" /></label>
                 <label>日期 <input id="loan-date" class="field" type="date" required /></label>
+
+                <div class="span-2 detail-block">
+                  <div class="detail-block-head">
+                    <h4>試用對象 / 個案</h4>
+                    <span id="loan-target-count" class="pill">0 人</span>
+                  </div>
+                  <input id="loan-case-search" class="field" type="search" placeholder="搜尋編號、姓名、單位，可複選" />
+                  <div id="loan-case-options" class="stack-list empty-state">尚未載入個案資料。</div>
+                </div>
+
+                <div class="span-2 detail-block">
+                  <div class="detail-block-head">
+                    <h4>設備代碼</h4>
+                    <label class="file-btn inline">
+                      <input id="loan-qr-photo-input" type="file" accept="image/*" capture="environment" multiple />
+                      拍照掃 QR
+                    </label>
+                  </div>
+                  <input
+                    id="loan-asset-code"
+                    class="field"
+                    type="text"
+                    list="asset-code-options"
+                    placeholder="輸入代碼後按 Enter，可連續新增多件"
+                  />
+                  <div id="loan-asset-queue" class="stack-list empty-state">尚未掃描設備。</div>
+                </div>
+
                 <label class="span-2">備註 <textarea id="loan-note" class="field" rows="3"></textarea></label>
                 <div class="form-actions span-2">
                   <button type="submit" class="primary-btn" data-requires-auth>儲存借還紀錄</button>
@@ -975,13 +1075,14 @@
                       <th>日期</th>
                       <th>編號</th>
                       <th>名稱</th>
+                      <th>對象</th>
                       <th>動作</th>
                       <th>借用人 / 單位</th>
                       <th>備註</th>
                     </tr>
                   </thead>
                   <tbody id="loan-table-body">
-                    <tr><td colspan="6" class="muted-cell">尚無借還紀錄。</td></tr>
+                    <tr><td colspan="7" class="muted-cell">尚無借還紀錄。</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -995,7 +1096,7 @@
               <div class="section-head">
                 <div>
                   <p class="eyebrow">個案 Excel 匯入</p>
-                  <h3>整理後同步到 Google Drive 的 `cases.json`</h3>
+                  <h3>整理後同步到 Firebase 的 `caseRecords` 集合</h3>
                 </div>
                 <label class="file-btn">
                   <input id="case-import-input" type="file" accept=".xls,.xlsx" />
@@ -1004,9 +1105,9 @@
               </div>
 
               <div class="import-callout">
-                <p>先整理欄位，再按「同步個案資料到 Google Drive」。</p>
+                <p>先整理欄位，再按「同步個案資料到 Firebase」。</p>
                 <button id="sync-cases-btn" class="primary-btn" disabled data-requires-auth>
-                  同步個案資料到 Google Drive
+                  同步個案資料到 Firebase
                 </button>
               </div>
 
@@ -1054,38 +1155,61 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
     <script>
+      const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyC0TRCHr7qlWX_4RkLMWfn2rE5PdjJEEiE",
+        authDomain: "kpptassistive-device.firebaseapp.com",
+        projectId: "kpptassistive-device",
+        storageBucket: "kpptassistive-device.firebasestorage.app",
+        messagingSenderId: "658513065345",
+        appId: "1:658513065345:web:36a05ca1773ba389f56480",
+        measurementId: "G-TP6C5M3GQM",
+      };
+
+      const FIREBASE_COLLECTIONS = {
+        recycleAssets: "recycleAssets",
+        projectAssets: "projectAssets",
+        loanRecords: "loanRecords",
+        caseRecords: "caseRecords",
+      };
+
       const DRIVE_CONFIG = {
-        clientId: "665948748085-vooum9m2jel87kn5r2sbp7bv7tg0fad7.apps.googleusercontent.com",
-        rootFolderId: "",
+        clientId: "658513065345-kst6ahnsauvlu4dq2f2jq6vqp2p9gm3n.apps.googleusercontent.com",
+        rootFolderId: "1vUwy7SyIwcXNAyFddO-KJQBKkBleinAj",
+        requireFixedRootFolder: true,
         appFolderName: "高屏澎東職務再設計輔具管理資料庫",
         photoFolderName: "asset-photos",
         dataFiles: {
-          assets: "assets.json",
-          loans: "loans.json",
+          recycleAssets: "recycled-assets.json",
+          projectAssets: "project-assets.json",
+          projectLoans: "project-loans.json",
           cases: "cases.json",
         },
       };
-
-      const DRIVE_SCOPE = [
-        "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/userinfo.email",
-      ].join(" ");
 
       const state = {
         user: null,
         accessToken: "",
         tokenClient: null,
-        assets: [],
+        recycleAssets: [],
+        projectAssets: [],
         loans: [],
         cases: [],
-        importedAssets: [],
-        importedAssetSheets: [],
+        importedRecycleAssets: [],
+        importedRecycleSheets: [],
+        importedProjectAssets: [],
+        importedProjectSheets: [],
         importedCases: [],
         importedCaseSheets: [],
         batchQueue: [],
+        loanAssetQueue: [],
+        selectedLoanCaseIds: [],
+        assetDataset: "recycle",
         selectedAssetId: "",
+        selectedAssetKind: "recycle",
         currentView: "dashboard",
         lastSingleResult: null,
         drive: {
@@ -1097,12 +1221,31 @@
         photoPromiseCache: new Map(),
       };
 
+      let firebaseServices = null;
+      let authObserverBound = false;
+      let redirectResultChecked = false;
+
       const viewTitles = {
         dashboard: "總覽 / 匯入",
         assets: "輔具清冊",
         inventory: "盤點拍照",
         loans: "借用 / 歸還",
         cases: "個案匯入",
+      };
+
+      const ASSET_DATASETS = {
+        recycle: {
+          key: "recycle",
+          fileKey: "recycleAssets",
+          label: "回收輔具清單",
+          emptyLabel: "回收輔具資料",
+        },
+        project: {
+          key: "project",
+          fileKey: "projectAssets",
+          label: "職再借用清單",
+          emptyLabel: "職再借用清單資料",
+        },
       };
 
       const elements = {
@@ -1118,14 +1261,20 @@
         metricPhotoAssets: document.querySelector("#metric-photo-assets"),
         metricLoanedAssets: document.querySelector("#metric-loaned-assets"),
         metricLastInventory: document.querySelector("#metric-last-inventory"),
-        assetImportInput: document.querySelector("#asset-import-input"),
-        syncAssetsButton: document.querySelector("#sync-assets-btn"),
-        importPreview: document.querySelector("#import-preview"),
+        recycleImportInput: document.querySelector("#recycle-import-input"),
+        syncRecycleAssetsButton: document.querySelector("#sync-recycle-assets-btn"),
+        recycleImportPreview: document.querySelector("#recycle-import-preview"),
+        projectImportInput: document.querySelector("#project-import-input"),
+        syncProjectAssetsButton: document.querySelector("#sync-project-assets-btn"),
+        projectImportPreview: document.querySelector("#project-import-preview"),
         countySummary: document.querySelector("#county-summary"),
         inventoryFeed: document.querySelector("#inventory-feed"),
+        assetViewTitle: document.querySelector("#asset-view-title"),
+        assetDatasetSwitch: document.querySelector("#asset-dataset-switch"),
         assetSearch: document.querySelector("#asset-search"),
         assetCategoryFilter: document.querySelector("#asset-category-filter"),
         assetCountyFilter: document.querySelector("#asset-county-filter"),
+        downloadWordButton: document.querySelector("#download-word-btn"),
         newAssetButton: document.querySelector("#new-asset-btn"),
         assetTableBody: document.querySelector("#asset-table-body"),
         assetFormTitle: document.querySelector("#asset-form-title"),
@@ -1156,10 +1305,15 @@
         uploadMatchedButton: document.querySelector("#upload-matched-btn"),
         loanForm: document.querySelector("#loan-form"),
         loanAssetCode: document.querySelector("#loan-asset-code"),
+        loanQrPhotoInput: document.querySelector("#loan-qr-photo-input"),
         loanAction: document.querySelector("#loan-action"),
         loanPerson: document.querySelector("#loan-person"),
         loanUnit: document.querySelector("#loan-unit"),
         loanDate: document.querySelector("#loan-date"),
+        loanCaseSearch: document.querySelector("#loan-case-search"),
+        loanCaseOptions: document.querySelector("#loan-case-options"),
+        loanTargetCount: document.querySelector("#loan-target-count"),
+        loanAssetQueue: document.querySelector("#loan-asset-queue"),
         loanNote: document.querySelector("#loan-note"),
         loanTableBody: document.querySelector("#loan-table-body"),
         caseImportInput: document.querySelector("#case-import-input"),
@@ -1228,6 +1382,24 @@
         return `${source.slice(0, maxLength)}...`;
       }
 
+      function replaceFileExtension(name = "", nextExtension = ".jpg") {
+        const source = normalizeText(name) || "upload";
+        if (source.includes(".")) {
+          return source.replace(/\.[^.]+$/, nextExtension);
+        }
+        return `${source}${nextExtension}`;
+      }
+
+      function normalizeDriveFolderId(value = "") {
+        const source = normalizeText(value);
+        if (!source) return "";
+        const folderMatch = source.match(/drive\/folders\/([a-zA-Z0-9_-]+)/i);
+        if (folderMatch?.[1]) return folderMatch[1];
+        const queryMatch = source.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
+        if (queryMatch?.[1]) return queryMatch[1];
+        return source;
+      }
+
       function uniqueBy(list, keyBuilder) {
         const tracker = new Set();
         return list.filter((item) => {
@@ -1247,80 +1419,111 @@
         return String(value ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
       }
 
-      async function ensureGoogleIdentityLoaded() {
-        if (window.google?.accounts?.oauth2) return;
-        await new Promise((resolve, reject) => {
-          const startedAt = Date.now();
-          const timer = setInterval(() => {
-            if (window.google?.accounts?.oauth2) {
-              clearInterval(timer);
-              resolve();
-              return;
-            }
-            if (Date.now() - startedAt > 12000) {
-              clearInterval(timer);
-              reject(new Error("Google Identity Services 載入逾時"));
-            }
-          }, 200);
-        });
+      function ensureFirebaseReady() {
+        if (firebaseServices) return firebaseServices;
+        const app = firebase.apps?.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+        firebaseServices = {
+          app,
+          auth: firebase.auth(app),
+          db: firebase.firestore(app),
+        };
+        return firebaseServices;
       }
 
-      async function fetchUserInfo() {
-        const response = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-          headers: {
-            Authorization: `Bearer ${state.accessToken}`,
-          },
+      function mapFirebaseUser(user) {
+        if (!user) return null;
+        return {
+          uid: user.uid,
+          email: user.email || "已登入",
+          displayName: user.displayName || user.email || "已登入",
+        };
+      }
+
+      async function restoreDriveAccessTokenFromRedirect() {
+        if (state.accessToken || redirectResultChecked) return state.accessToken;
+        const { auth } = ensureFirebaseReady();
+        redirectResultChecked = true;
+        try {
+          const result = await auth.getRedirectResult();
+          const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+          if (credential?.accessToken) {
+            state.accessToken = credential.accessToken;
+          }
+          if (result?.user) {
+            state.user = mapFirebaseUser(result.user);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+        return state.accessToken;
+      }
+
+      function bindFirebaseAuthObserver() {
+        if (authObserverBound) return;
+        const { auth } = ensureFirebaseReady();
+        authObserverBound = true;
+        auth.onAuthStateChanged(async (user) => {
+          const wasSignedIn = Boolean(state.user);
+          state.user = mapFirebaseUser(user);
+          if (!user) {
+            state.accessToken = "";
+            if (wasSignedIn) {
+              state.recycleAssets = [];
+              state.projectAssets = [];
+              state.loans = [];
+              state.cases = [];
+              renderAll();
+            }
+            updateSyncBadge("請先登入 Google / Firebase", "idle");
+            return;
+          }
+          try {
+            if (!state.accessToken) {
+              await restoreDriveAccessTokenFromRedirect();
+            }
+            await bootstrapDriveStorage();
+            if (!wasSignedIn) {
+              updateSyncBadge("已登入，正在同步資料...", "loading");
+            }
+            await refreshRemoteData();
+          } catch (error) {
+            console.error(error);
+            updateSyncBadge("Firebase 同步失敗", "error");
+          }
         });
-        if (!response.ok) return { email: "已授權", name: "已授權" };
-        return response.json();
       }
 
       async function signInWithGoogle() {
-        if (normalizeText(DRIVE_CONFIG.clientId).includes("請改")) {
-          throw new Error("請先在 HTML 最上方設定 DRIVE_CONFIG.clientId");
+        const { auth } = ensureFirebaseReady();
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.addScope("https://www.googleapis.com/auth/drive.file");
+        provider.setCustomParameters({ prompt: "select_account" });
+        const useRedirect = window.matchMedia("(max-width: 768px)").matches;
+        if (useRedirect) {
+          await auth.signInWithRedirect(provider);
+          return null;
         }
-
-        await ensureGoogleIdentityLoaded();
-
-        if (!state.tokenClient) {
-          state.tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: DRIVE_CONFIG.clientId,
-            scope: DRIVE_SCOPE,
-            callback: () => {},
-          });
-        }
-
-        return new Promise((resolve, reject) => {
-          state.tokenClient.callback = async (response) => {
-            if (response?.error) {
-              reject(new Error(response.error));
-              return;
-            }
-            state.accessToken = response.access_token || "";
-            const userInfo = await fetchUserInfo();
-            state.user = {
-              email: userInfo.email || "已授權",
-              displayName: userInfo.name || userInfo.email || "已授權",
-            };
-            await bootstrapDriveStorage();
-            resolve(state.user);
-          };
-
-          state.tokenClient.requestAccessToken({
-            prompt: state.accessToken ? "" : "consent",
-          });
-        });
+        const result = await auth.signInWithPopup(provider);
+        const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+        state.user = mapFirebaseUser(result.user);
+        state.accessToken = credential?.accessToken || "";
+        await bootstrapDriveStorage();
+        return state.user;
       }
 
       async function signOutUser() {
-        if (window.google?.accounts?.oauth2 && state.accessToken) {
-          google.accounts.oauth2.revoke(state.accessToken, () => {});
-        }
+        const { auth } = ensureFirebaseReady();
+        await auth.signOut();
         state.user = null;
         state.accessToken = "";
-        state.assets = [];
+        state.recycleAssets = [];
+        state.projectAssets = [];
         state.loans = [];
         state.cases = [];
+        state.loanAssetQueue = [];
+        state.selectedLoanCaseIds = [];
+        state.selectedAssetId = "";
+        state.selectedAssetKind = state.assetDataset;
         state.drive = { rootFolderId: "", photoFolderId: "", fileIds: {} };
         for (const url of state.photoUrlCache.values()) {
           URL.revokeObjectURL(url);
@@ -1391,9 +1594,14 @@
       async function ensureRootFolder() {
         if (state.drive.rootFolderId) return state.drive.rootFolderId;
 
-        if (normalizeText(DRIVE_CONFIG.rootFolderId)) {
-          state.drive.rootFolderId = normalizeText(DRIVE_CONFIG.rootFolderId);
+        const configuredRootFolderId = normalizeDriveFolderId(DRIVE_CONFIG.rootFolderId);
+        if (configuredRootFolderId) {
+          state.drive.rootFolderId = configuredRootFolderId;
           return state.drive.rootFolderId;
+        }
+
+        if (DRIVE_CONFIG.requireFixedRootFolder) {
+          throw new Error("請先把 Shared Drive 主資料夾 ID 填入 DRIVE_CONFIG.rootFolderId");
         }
 
         const files = await listDriveFiles({
@@ -1458,6 +1666,52 @@
         );
       }
 
+      async function compressImageFile(
+        file,
+        {
+          maxWidth = 1800,
+          maxHeight = 1800,
+          quality = 0.82,
+          targetType = "image/jpeg",
+        } = {},
+      ) {
+        if (!file || !String(file.type || "").startsWith("image/")) return file;
+        const previewUrl = URL.createObjectURL(file);
+        try {
+          const image = await loadImage(previewUrl);
+          const canvas = document.createElement("canvas");
+          const widthRatio = maxWidth / image.width;
+          const heightRatio = maxHeight / image.height;
+          const scale = Math.min(1, widthRatio, heightRatio);
+          const width = Math.max(1, Math.round(image.width * scale));
+          const height = Math.max(1, Math.round(image.height * scale));
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext("2d", { alpha: false });
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, width, height);
+          context.drawImage(image, 0, 0, width, height);
+
+          const compressedBlob = await new Promise((resolve) => {
+            canvas.toBlob(resolve, targetType, quality);
+          });
+
+          if (!compressedBlob || compressedBlob.size >= file.size) {
+            return file;
+          }
+
+          return new File([compressedBlob], replaceFileExtension(file.name, ".jpg"), {
+            type: targetType,
+            lastModified: Date.now(),
+          });
+        } catch (error) {
+          console.warn("圖片壓縮失敗，改用原圖上傳", error);
+          return file;
+        } finally {
+          URL.revokeObjectURL(previewUrl);
+        }
+      }
+
       async function ensureJsonFile(fileKey) {
         if (state.drive.fileIds[fileKey]) return state.drive.fileIds[fileKey];
         const rootFolderId = await ensureRootFolder();
@@ -1510,127 +1764,187 @@
         });
       }
 
-      async function bootstrapDriveStorage() {
-        const rootFolderId = await ensureRootFolder();
-        const photoFolderId = await ensureChildFolder(DRIVE_CONFIG.photoFolderName, rootFolderId);
-        state.drive.rootFolderId = rootFolderId;
-        state.drive.photoFolderId = photoFolderId;
-        await Promise.all([
-          ensureJsonFile("assets"),
-          ensureJsonFile("loans"),
-          ensureJsonFile("cases"),
-        ]);
+      function normalizeAssetKind(value = "") {
+        return value === "project" ? "project" : "recycle";
       }
 
-      async function listAssets() {
-        return readJsonCollection("assets");
+      function getAssetDatasetConfig(assetKind = state.assetDataset) {
+        return ASSET_DATASETS[normalizeAssetKind(assetKind)] || ASSET_DATASETS.recycle;
+      }
+
+      function getAssetFileKey(assetKind = state.assetDataset) {
+        return getAssetDatasetConfig(assetKind).fileKey;
+      }
+
+      function getAssetCollectionName(assetKind = state.assetDataset) {
+        return normalizeAssetKind(assetKind) === "project"
+          ? FIREBASE_COLLECTIONS.projectAssets
+          : FIREBASE_COLLECTIONS.recycleAssets;
+      }
+
+      async function readFirestoreCollection(collectionName) {
+        const { db } = ensureFirebaseReady();
+        const snapshot = await db.collection(collectionName).get();
+        return snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+      }
+
+      async function commitInFirestoreBatches(collectionName, records) {
+        const { db } = ensureFirebaseReady();
+        const chunkSize = 300;
+        for (let index = 0; index < records.length; index += chunkSize) {
+          const batch = db.batch();
+          records.slice(index, index + chunkSize).forEach((record) => {
+            const docRef = db.collection(collectionName).doc(record.id);
+            batch.set(docRef, record, { merge: true });
+          });
+          await batch.commit();
+        }
+      }
+
+      async function bootstrapDriveStorage() {
+        const services = ensureFirebaseReady();
+        if (state.accessToken) {
+          const rootFolderId = await ensureRootFolder();
+          const photoFolderId = await ensureChildFolder(DRIVE_CONFIG.photoFolderName, rootFolderId);
+          state.drive.rootFolderId = rootFolderId;
+          state.drive.photoFolderId = photoFolderId;
+        }
+        return services;
+      }
+
+      async function ensureDriveUploadReady() {
+        if (!state.user) {
+          throw new Error("請先登入 Google");
+        }
+        if (!state.accessToken) {
+          throw new Error("請重新登入 Google，授權後才能壓縮並上傳到 Google Drive");
+        }
+        await bootstrapDriveStorage();
+        if (!state.drive.photoFolderId) {
+          throw new Error("找不到 Google Drive 照片資料夾，請確認 Drive 設定");
+        }
+        return state.drive.photoFolderId;
+      }
+
+      async function listAssets(assetKind = state.assetDataset) {
+        return readFirestoreCollection(getAssetCollectionName(assetKind));
       }
 
       async function listLoanRecords() {
-        return readJsonCollection("loans");
+        return readFirestoreCollection(FIREBASE_COLLECTIONS.loanRecords);
       }
 
       async function listCaseRecords() {
-        return readJsonCollection("cases");
+        return readFirestoreCollection(FIREBASE_COLLECTIONS.caseRecords);
       }
 
-      async function upsertAssets(records) {
-        const current = await listAssets();
-        const map = new Map(current.map((item) => [item.id, item]));
-        records.forEach((item) => {
-          map.set(item.id, { ...(map.get(item.id) || {}), ...item, updatedAt: new Date().toISOString() });
-        });
-        const next = [...map.values()].sort((a, b) =>
-          `${a.code || a.id}`.localeCompare(`${b.code || b.id}`, "zh-Hant", {
-            numeric: true,
-            sensitivity: "base",
-          }),
-        );
-        await writeJsonCollection("assets", next);
+      async function upsertAssets(assetKind, records) {
+        const normalizedKind = normalizeAssetKind(assetKind);
+        const next = records.map((item) => ({
+          ...item,
+          assetKind: normalizedKind,
+          updatedAt: new Date().toISOString(),
+        }));
+        await commitInFirestoreBatches(getAssetCollectionName(normalizedKind), next);
       }
 
-      async function saveAsset(record) {
-        await upsertAssets([record]);
+      async function saveAsset(assetKind, record) {
+        await upsertAssets(assetKind, [record]);
       }
 
-      async function deleteAsset(assetId) {
-        const current = await listAssets();
-        await writeJsonCollection(
-          "assets",
-          current.filter((item) => item.id !== assetId),
-        );
+      async function deleteAsset(assetKind, assetId) {
+        const { db } = ensureFirebaseReady();
+        await db.collection(getAssetCollectionName(assetKind)).doc(assetId).delete();
       }
 
       async function addLoanRecord(payload) {
-        const currentLoans = await listLoanRecords();
-        currentLoans.unshift({
+        const { db } = ensureFirebaseReady();
+        const loanRecord = {
           id: createStableId("loan", `${payload.assetId}|${payload.date}|${Date.now()}`),
           ...payload,
+          assetKind: "project",
           createdAt: new Date().toISOString(),
-        });
-        await writeJsonCollection("loans", currentLoans);
-
-        const currentAssets = await listAssets();
-        const updatedAssets = currentAssets.map((asset) => {
-          if (asset.id !== payload.assetId) return asset;
-          return {
-            ...asset,
+        };
+        const assetRef = db.collection(FIREBASE_COLLECTIONS.projectAssets).doc(payload.assetId);
+        const assetSnap = await assetRef.get();
+        const assetData = assetSnap.data() || {};
+        const batch = db.batch();
+        batch.set(db.collection(FIREBASE_COLLECTIONS.loanRecords).doc(loanRecord.id), loanRecord, { merge: true });
+        batch.set(
+          assetRef,
+          {
+            ...assetData,
+            assetKind: "project",
             status: payload.action === "borrow" ? "借出中" : "在庫",
             currentBorrower: payload.action === "borrow" ? payload.person : "",
             currentBorrowUnit: payload.action === "borrow" ? payload.unit : "",
             lastLoanAt: payload.date,
             updatedAt: new Date().toISOString(),
-          };
-        });
-        await writeJsonCollection("assets", updatedAssets);
+          },
+          { merge: true },
+        );
+        await batch.commit();
       }
 
       async function upsertCaseRecords(records) {
-        const current = await listCaseRecords();
-        const map = new Map(current.map((item) => [item.id, item]));
-        records.forEach((item) => {
-          map.set(item.id, { ...(map.get(item.id) || {}), ...item, updatedAt: new Date().toISOString() });
-        });
-        await writeJsonCollection("cases", [...map.values()]);
+        const next = records.map((item) => ({
+          ...item,
+          updatedAt: new Date().toISOString(),
+        }));
+        await commitInFirestoreBatches(FIREBASE_COLLECTIONS.caseRecords, next);
       }
 
-      async function uploadAssetPhoto(assetId, file, meta = {}) {
-        await bootstrapDriveStorage();
-        const uploadName = `${normalizeAssetCode(meta.code || assetId) || assetId}-${Date.now()}-${file.name}`;
+      async function uploadAssetPhoto(assetId, file, meta = {}, assetKind = "recycle") {
+        const normalizedKind = normalizeAssetKind(assetKind);
+        const photoFolderId = await ensureDriveUploadReady();
+        const { db } = ensureFirebaseReady();
+        const compressedFile = await compressImageFile(file);
+        const kindFolderId = await ensureChildFolder(`${normalizedKind}-photos`, photoFolderId);
+        const uploadName = `${normalizeAssetCode(meta.code || assetId) || assetId}-${Date.now()}-${compressedFile.name}`;
         const uploaded = await uploadMultipartFile({
           metadata: {
             name: uploadName,
-            parents: [state.drive.photoFolderId],
+            parents: [kindFolderId],
+            description: `${normalizeAssetCode(meta.code || assetId) || assetId} / ${meta.note || "asset-photo"}`,
           },
-          blob: file,
-          mimeType: file.type || "image/jpeg",
+          blob: compressedFile,
+          mimeType: compressedFile.type || "image/jpeg",
         });
-
-        const currentAssets = await listAssets();
-        const nextAssets = currentAssets.map((asset) => {
-          if (asset.id !== assetId) return asset;
-          const photos = Array.isArray(asset.photos) ? [...asset.photos] : [];
-          const photoEntry = {
-            fileId: uploaded.id,
-            name: file.name,
-            mimeType: file.type || "image/jpeg",
-            note: meta.note || "",
-            code: meta.code || asset.code || "",
-            rawQrText: meta.rawQrText || "",
-            uploadedAt: new Date().toISOString(),
-            source: "drive-upload",
-          };
-          photos.unshift(photoEntry);
-          return {
+        const driveFileUrl = `https://drive.google.com/file/d/${uploaded.id}/view`;
+        const assetRef = db.collection(getAssetCollectionName(normalizedKind)).doc(assetId);
+        const assetSnap = await assetRef.get();
+        const asset = assetSnap.exists ? assetSnap.data() : {};
+        const photos = Array.isArray(asset.photos) ? [...asset.photos] : [];
+        const photoEntry = {
+          fileId: uploaded.id,
+          url: driveFileUrl,
+          name: compressedFile.name,
+          originalName: file.name,
+          mimeType: compressedFile.type || "image/jpeg",
+          originalSize: file.size,
+          compressedSize: compressedFile.size,
+          compressed: compressedFile.size < file.size,
+          note: meta.note || "",
+          code: meta.code || asset.code || "",
+          rawQrText: meta.rawQrText || "",
+          uploadedAt: new Date().toISOString(),
+          source: "drive-upload",
+        };
+        photos.unshift(photoEntry);
+        await assetRef.set(
+          {
             ...asset,
+            assetKind: normalizedKind,
             photos,
             updatedAt: new Date().toISOString(),
             lastInventoryAt: new Date().toISOString(),
-          };
-        });
-
-        await writeJsonCollection("assets", nextAssets);
-        return uploaded.id;
+          },
+          { merge: true },
+        );
+        return photoEntry;
       }
 
       function getPhotoEntries(asset) {
@@ -1670,22 +1984,27 @@
       }
 
       async function hydrateDriveImages(scope = document) {
+        if (!state.accessToken) return;
         const targets = [...scope.querySelectorAll("[data-drive-file-id]")];
         await Promise.all(
           targets.map(async (node) => {
-            const fileId = node.dataset.driveFileId;
-            const photo = { fileId };
-            const url = await ensurePhotoObjectUrl(photo);
-            if (node.tagName === "IMG") {
-              node.src = url;
+            try {
+              const fileId = node.dataset.driveFileId;
+              const photo = { fileId };
+              const url = await ensurePhotoObjectUrl(photo);
+              if (node.tagName === "IMG") {
+                node.src = url;
+              }
+              node.dataset.photoUrl = url;
+            } catch (error) {
+              console.error(error);
             }
-            node.dataset.photoUrl = url;
           }),
         );
       }
 
       function setAuthControls() {
-        const signedIn = Boolean(state.user && state.accessToken);
+        const signedIn = Boolean(state.user);
         elements.signInButton.hidden = signedIn;
         elements.signOutButton.hidden = !signedIn;
         elements.userChip.hidden = !signedIn;
@@ -1693,22 +2012,51 @@
         elements.authRequiredTargets.forEach((item) => {
           item.disabled = !signedIn;
         });
-        elements.syncAssetsButton.disabled = !signedIn || state.importedAssets.length === 0;
+        elements.syncRecycleAssetsButton.disabled = !signedIn || state.importedRecycleAssets.length === 0;
+        elements.syncProjectAssetsButton.disabled = !signedIn || state.importedProjectAssets.length === 0;
         elements.syncCasesButton.disabled = !signedIn || state.importedCases.length === 0;
         elements.uploadMatchedButton.disabled =
           !signedIn || !state.batchQueue.some((item) => item.assetId && !item.uploaded);
       }
 
-      function getDecoratedAssets() {
-        return state.assets.map((asset) => ({
+      function getAssetCollection(assetKind = state.assetDataset) {
+        return normalizeAssetKind(assetKind) === "project" ? state.projectAssets : state.recycleAssets;
+      }
+
+      function decorateAssets(records = []) {
+        return records.map((asset) => ({
           ...asset,
+          assetKind: normalizeAssetKind(asset.assetKind),
           photos: getPhotoEntries(asset),
           primaryPhoto: getPrimaryPhoto(asset),
         }));
       }
 
+      function getDecoratedAssets(assetKind = state.assetDataset) {
+        return decorateAssets(getAssetCollection(assetKind));
+      }
+
+      function getAllDecoratedAssets() {
+        return [...getDecoratedAssets("recycle"), ...getDecoratedAssets("project")];
+      }
+
+      function findAssetById(assetId, assetKind = "") {
+        if (!assetId) return null;
+        if (assetKind) {
+          return getDecoratedAssets(assetKind).find((asset) => asset.id === assetId) || null;
+        }
+        return getAllDecoratedAssets().find((asset) => asset.id === assetId) || null;
+      }
+
+      function findAssetsByCode(code, assetKind = "all") {
+        const normalizedCode = normalizeAssetCode(code);
+        if (!normalizedCode) return [];
+        const assets = assetKind === "all" ? getAllDecoratedAssets() : getDecoratedAssets(assetKind);
+        return assets.filter((asset) => normalizeAssetCode(asset.code) === normalizedCode);
+      }
+
       function getSelectedAsset() {
-        return getDecoratedAssets().find((asset) => asset.id === state.selectedAssetId) || null;
+        return findAssetById(state.selectedAssetId, state.selectedAssetKind) || null;
       }
 
       function renderViews() {
@@ -1721,43 +2069,53 @@
         });
       }
 
+      function renderAssetDatasetState() {
+        const config = getAssetDatasetConfig();
+        elements.assetDatasetSwitch.value = config.key;
+        elements.assetViewTitle.textContent = config.label;
+        elements.newAssetButton.textContent = config.key === "project" ? "新增職再項目" : "新增回收輔具";
+        elements.assetCountyFilter.disabled = config.key === "project";
+      }
+
       function renderMetrics() {
-        const assets = getDecoratedAssets();
-        elements.metricTotalAssets.textContent = `${assets.length}`;
-        elements.metricPhotoAssets.textContent = `${assets.filter((asset) => asset.primaryPhoto).length}`;
-        elements.metricLoanedAssets.textContent = `${assets.filter((asset) => /借出/.test(asset.status || "")).length}`;
-        const latest = assets
+        const recycleAssets = getDecoratedAssets("recycle");
+        const projectAssets = getDecoratedAssets("project");
+        const allAssets = [...recycleAssets, ...projectAssets];
+        elements.metricTotalAssets.textContent = `${recycleAssets.length}`;
+        elements.metricPhotoAssets.textContent = `${projectAssets.length}`;
+        elements.metricLoanedAssets.textContent = `${projectAssets.filter((asset) => /借出/.test(asset.status || "")).length}`;
+        const latest = allAssets
           .filter((asset) => asset.lastInventoryAt)
           .sort((a, b) => `${b.lastInventoryAt}`.localeCompare(`${a.lastInventoryAt}`))[0];
         elements.metricLastInventory.textContent = latest ? formatDateLabel(latest.lastInventoryAt) : "尚無";
       }
 
-      function renderImportPreview() {
-        if (state.importedAssets.length === 0) {
-          elements.importPreview.className = "stack-list empty-state";
-          elements.importPreview.textContent = "尚未匯入 Excel 檔案。";
+      function renderAssetImportPreview(container, records, sheets, options) {
+        if (records.length === 0) {
+          container.className = "stack-list empty-state";
+          container.textContent = options.emptyText;
           return;
         }
 
-        elements.importPreview.className = "stack-list";
-        elements.importPreview.innerHTML = `
+        container.className = "stack-list";
+        container.innerHTML = `
           <article class="preview-card">
-            <h4>匯入完成，共 ${state.importedAssets.length} 筆輔具資料</h4>
-            <p>單檔版會直接把整理好的資料同步到 Google Drive 的 assets.json。</p>
+            <h4>匯入完成，共 ${records.length} 筆${options.label}</h4>
+            <p>整理後會同步到 Firebase 的 \`${options.fileKey}\` 資料集合。</p>
             <div class="preview-chip-row">
-              ${state.importedAssetSheets
+              ${sheets
                 .filter((sheet) => !sheet.skipped)
                 .map((sheet) => `<span class="chip">${sheet.sheetName} ${sheet.count} 筆</span>`)
                 .join("")}
             </div>
           </article>
-          ${state.importedAssets
+          ${records
             .slice(0, 6)
             .map(
               (record) => `
                 <article class="preview-card">
-                  <h4>${record.code}｜${record.name}</h4>
-                  <p>${record.category || "未分類"} / ${record.county || "未指定縣市"} / ${record.status || "未指定狀態"}</p>
+                  <h4>${record.code || "未填編號"}｜${record.name || "未填名稱"}</h4>
+                  <p>${[record.category, record.county, record.status].filter(Boolean).join(" / ") || "尚未辨識主要欄位"}</p>
                   <p>${truncateText(record.location || record.remarks || record.description || "無位置與備註")}</p>
                 </article>
               `,
@@ -1766,10 +2124,33 @@
         `;
       }
 
+      function renderImportPreviews() {
+        renderAssetImportPreview(
+          elements.recycleImportPreview,
+          state.importedRecycleAssets,
+          state.importedRecycleSheets,
+          {
+            label: "回收輔具資料",
+            fileKey: "recycleAssets",
+            emptyText: "尚未匯入回收輔具 Excel。",
+          },
+        );
+        renderAssetImportPreview(
+          elements.projectImportPreview,
+          state.importedProjectAssets,
+          state.importedProjectSheets,
+          {
+            label: "職再借用清單資料",
+            fileKey: "projectAssets",
+            emptyText: "尚未匯入職再清單 Excel。",
+          },
+        );
+      }
+
       function renderCountySummary() {
-        const assets = getDecoratedAssets();
+        const assets = getDecoratedAssets("recycle");
         if (assets.length === 0) {
-          elements.countySummary.innerHTML = '<div class="empty-state">授權並同步資料後，這裡會顯示縣市分布。</div>';
+          elements.countySummary.innerHTML = '<div class="empty-state">同步回收輔具後，這裡會顯示縣市分布。</div>';
           return;
         }
         const groups = assets.reduce((map, asset) => {
@@ -1793,7 +2174,7 @@
       }
 
       function renderInventoryFeed() {
-        const assets = getDecoratedAssets()
+        const assets = getAllDecoratedAssets()
           .filter((asset) => asset.lastInventoryAt || asset.primaryPhoto)
           .sort((a, b) =>
             `${b.lastInventoryAt || b.updatedAt}`.localeCompare(`${a.lastInventoryAt || a.updatedAt}`),
@@ -1808,7 +2189,7 @@
             (asset) => `
               <article class="timeline-item">
                 <strong>${asset.code}｜${asset.name}</strong>
-                <p>${formatDateLabel(asset.lastInventoryAt || asset.updatedAt)} / 照片 ${asset.photos.length} 張</p>
+                <p>${getAssetDatasetConfig(asset.assetKind).label} / ${formatDateLabel(asset.lastInventoryAt || asset.updatedAt)} / 照片 ${asset.photos.length} 張</p>
               </article>
             `,
           )
@@ -1857,7 +2238,7 @@
       function renderAssetTable() {
         const assets = getVisibleAssets();
         if (assets.length === 0) {
-          elements.assetTableBody.innerHTML = '<tr><td colspan="8" class="muted-cell">目前沒有符合條件的輔具資料。</td></tr>';
+          elements.assetTableBody.innerHTML = `<tr><td colspan="8" class="muted-cell">目前沒有符合條件的${getAssetDatasetConfig().emptyLabel}。</td></tr>`;
           return;
         }
         elements.assetTableBody.innerHTML = assets
@@ -1865,7 +2246,7 @@
             const primaryPhoto = asset.primaryPhoto;
             const photoCell = primaryPhoto
               ? primaryPhoto.fileId
-                ? `<img class="thumb" alt="${asset.name}" data-drive-file-id="${primaryPhoto.fileId}" data-photo-meta="${asset.code}｜${asset.name}" />`
+                ? `<img class="thumb" src="${primaryPhoto.url}" alt="${asset.name}" data-photo-url="${primaryPhoto.url}" data-drive-file-id="${primaryPhoto.fileId}" data-photo-meta="${asset.code}｜${asset.name}" />`
                 : `<img class="thumb" src="${primaryPhoto.url}" alt="${asset.name}" data-photo-url="${primaryPhoto.url}" data-photo-meta="${asset.code}｜${asset.name}" />`
               : '<div class="thumb-placeholder">無照片</div>';
             return `
@@ -1879,14 +2260,12 @@
                 <td>${truncateText(asset.location || asset.remarks || asset.description || "-", 36)}</td>
                 <td>
                   <div class="row-actions">
-                    <button type="button" data-action="edit-asset" data-id="${asset.id}">編輯</button>
-                    <button type="button" data-action="open-inventory" data-id="${asset.id}">盤點</button>
+                    <button type="button" data-action="edit-asset" data-id="${asset.id}" data-kind="${asset.assetKind}">編輯</button>
+                    <button type="button" data-action="open-inventory" data-id="${asset.id}" data-kind="${asset.assetKind}">盤點</button>
                     ${
                       primaryPhoto
-                        ? `<button type="button" data-action="preview-photo" ${
-                            primaryPhoto.fileId
-                              ? `data-drive-file-id="${primaryPhoto.fileId}"`
-                              : `data-photo-url="${primaryPhoto.url}"`
+                        ? `<button type="button" data-action="preview-photo" data-photo-url="${primaryPhoto.url}" ${
+                            primaryPhoto.fileId ? `data-drive-file-id="${primaryPhoto.fileId}"` : ""
                           } data-meta="${asset.code}｜${asset.name}">預覽</button>`
                         : ""
                     }
@@ -1912,7 +2291,7 @@
               <div class="photo-stack-item">
                 ${
                   photo.fileId
-                    ? `<img class="thumb" alt="${asset.name}" data-drive-file-id="${photo.fileId}" data-photo-meta="${asset.code}｜${asset.name}" data-photo-index="${index}" />`
+                    ? `<img class="thumb" src="${photo.url}" alt="${asset.name}" data-photo-url="${photo.url}" data-drive-file-id="${photo.fileId}" data-photo-meta="${asset.code}｜${asset.name}" data-photo-index="${index}" />`
                     : `<img class="thumb" src="${photo.url}" alt="${asset.name}" data-photo-url="${photo.url}" data-photo-meta="${asset.code}｜${asset.name}" data-photo-index="${index}" />`
                 }
                 <small>${truncateText(photo.name || photo.note || "照片", 14)}</small>
@@ -1935,17 +2314,109 @@
         });
       }
 
+      function escapeHtml(value = "") {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;");
+      }
+
+      function buildQrDataUrl(code) {
+        if (!window.QRious) return "";
+        const canvas = document.createElement("canvas");
+        new window.QRious({
+          element: canvas,
+          value: normalizeText(code),
+          size: 110,
+          foreground: "#111111",
+          background: "#ffffff",
+          level: "H",
+        });
+        return canvas.toDataURL("image/png");
+      }
+
+      function downloadWordList() {
+        const assets = getVisibleAssets();
+        if (assets.length === 0) {
+          updateSyncBadge("目前沒有可下載的清單資料", "warn");
+          return;
+        }
+        const title = `${getAssetDatasetConfig().label} QR 清單`;
+        const rows = assets
+          .map((asset) => {
+            const qrDataUrl = buildQrDataUrl(asset.code);
+            return `
+              <tr>
+                <td class="qr-col">${qrDataUrl ? `<img src="${qrDataUrl}" alt="${escapeHtml(asset.code)}" />` : ""}</td>
+                <td class="info-col">
+                  <div>編號：${escapeHtml(asset.code || "-")}</div>
+                  <div>物品名稱：${escapeHtml(asset.name || "-")}</div>
+                  <div>購買年份：${escapeHtml(asset.purchaseYear || "-")}</div>
+                  <div>單價：${escapeHtml(asset.unitPrice || "-")}</div>
+                  <div>品牌：${escapeHtml(asset.brand || "-")}</div>
+                  <div>型號/尺寸：${escapeHtml(asset.model || "-")}</div>
+                </td>
+              </tr>
+            `;
+          })
+          .join("");
+
+        const html = `
+          <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+            <head>
+              <meta charset="UTF-8" />
+              <title>${escapeHtml(title)}</title>
+              <style>
+                @page { size: A4; margin: 1.2cm; }
+                body { font-family: "Noto Sans TC", Arial, sans-serif; font-size: 11pt; }
+                h1 { font-size: 14pt; margin: 0 0 12pt; }
+                table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                th, td { border: 1px solid #888; padding: 6pt; vertical-align: top; }
+                th { text-align: center; font-size: 11pt; }
+                .qr-col { width: 120pt; text-align: center; }
+                .qr-col img { width: 88pt; height: 88pt; }
+                .info-col div { margin-bottom: 2pt; }
+              </style>
+            </head>
+            <body>
+              <h1>${escapeHtml(title)}</h1>
+              <table>
+                <thead>
+                  <tr>
+                    <th>QR</th>
+                    <th>編號</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </body>
+          </html>
+        `;
+
+        const blob = new Blob([`\ufeff${html}`], { type: "application/msword" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${title}.doc`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+      }
+
       function resetAssetForm() {
         elements.assetForm.reset();
         elements.assetId.value = "";
-        elements.assetFormTitle.textContent = "新增 / 編輯輔具";
+        state.selectedAssetId = "";
+        state.selectedAssetKind = state.assetDataset;
+        elements.assetFormTitle.textContent = `新增 / 編輯${getAssetDatasetConfig().emptyLabel}`;
         elements.assetPhotoStrip.innerHTML = '<div class="empty-state">這筆資料目前沒有照片。</div>';
         elements.assetPhotoCount.textContent = "0 張";
         renderQrCanvas({ code: "尚未填寫編號" });
       }
 
       function fillAssetForm(asset) {
-        elements.assetFormTitle.textContent = `編輯 ${asset.code || asset.name || "輔具資料"}`;
+        state.selectedAssetKind = normalizeAssetKind(asset.assetKind);
+        elements.assetFormTitle.textContent = `編輯 ${asset.code || asset.name || getAssetDatasetConfig(asset.assetKind).emptyLabel}`;
         elements.assetId.value = asset.id || "";
         elements.assetCode.value = asset.code || "";
         elements.assetName.value = asset.name || "";
@@ -1963,14 +2434,82 @@
       }
 
       function populateAssetCodeOptions() {
-        elements.assetCodeOptions.innerHTML = getDecoratedAssets()
+        elements.assetCodeOptions.innerHTML = getDecoratedAssets("project")
           .map((asset) => `<option value="${asset.code}">${asset.name}</option>`)
+          .join("");
+      }
+
+      function syncLoanIdentity() {
+        if (!state.user) {
+          elements.loanPerson.readOnly = false;
+          return;
+        }
+        elements.loanPerson.value = state.user.displayName || state.user.email || "";
+        elements.loanPerson.readOnly = true;
+      }
+
+      function renderLoanCaseOptions() {
+        const searchValue = normalizeText(elements.loanCaseSearch.value).toLowerCase();
+        const visibleCases = state.cases.filter((entry) => {
+          const haystack = [entry.caseCode, entry.name, entry.unit, entry.category]
+            .map((value) => normalizeText(value).toLowerCase())
+            .join(" ");
+          return !searchValue || haystack.includes(searchValue);
+        });
+        elements.loanTargetCount.textContent = `${state.selectedLoanCaseIds.length} 人`;
+        if (state.cases.length === 0) {
+          elements.loanCaseOptions.className = "stack-list empty-state";
+          elements.loanCaseOptions.textContent = "尚未載入個案資料。";
+          return;
+        }
+        if (visibleCases.length === 0) {
+          elements.loanCaseOptions.className = "stack-list empty-state";
+          elements.loanCaseOptions.textContent = "找不到符合條件的個案。";
+          return;
+        }
+        elements.loanCaseOptions.className = "stack-list case-option-list";
+        elements.loanCaseOptions.innerHTML = visibleCases
+          .map(
+            (entry) => `
+              <label class="case-option">
+                <input type="checkbox" data-case-id="${entry.id}" ${state.selectedLoanCaseIds.includes(entry.id) ? "checked" : ""} />
+                <div>
+                  <strong>${entry.caseCode || "未填編號"}｜${entry.name || "未填姓名"}</strong>
+                  <small>${[entry.unit, entry.category, entry.year].filter(Boolean).join(" / ") || "未補齊個案資訊"}</small>
+                </div>
+                <span class="chip">${entry.category || "個案"}</span>
+              </label>
+            `,
+          )
+          .join("");
+      }
+
+      function renderLoanAssetQueue() {
+        if (state.loanAssetQueue.length === 0) {
+          elements.loanAssetQueue.className = "stack-list empty-state";
+          elements.loanAssetQueue.textContent = "尚未掃描設備。";
+          return;
+        }
+        elements.loanAssetQueue.className = "stack-list loan-asset-queue";
+        elements.loanAssetQueue.innerHTML = state.loanAssetQueue
+          .map(
+            (asset) => `
+              <article class="loan-asset-row">
+                <span class="chip">${asset.code}</span>
+                <div>
+                  <strong>${asset.name || "未命名設備"}</strong>
+                  <small>${asset.category || "未分類"} / ${asset.status || "在庫"}</small>
+                </div>
+                <button type="button" class="ghost-btn" data-action="remove-loan-asset" data-id="${asset.id}">移除</button>
+              </article>
+            `,
+          )
           .join("");
       }
 
       function renderLoanTable() {
         if (state.loans.length === 0) {
-          elements.loanTableBody.innerHTML = '<tr><td colspan="6" class="muted-cell">尚無借還紀錄。</td></tr>';
+          elements.loanTableBody.innerHTML = '<tr><td colspan="7" class="muted-cell">尚無借還紀錄。</td></tr>';
           return;
         }
         elements.loanTableBody.innerHTML = state.loans
@@ -1981,6 +2520,7 @@
                 <td>${entry.date || formatDateLabel(entry.createdAt)}</td>
                 <td>${entry.assetCode || "-"}</td>
                 <td>${entry.assetName || "-"}</td>
+                <td>${truncateText((entry.targetCaseLabels || []).join("、") || "-", 24)}</td>
                 <td>${entry.action === "borrow" ? "借出" : "歸還"}</td>
                 <td>${[entry.person, entry.unit].filter(Boolean).join(" / ") || "-"}</td>
                 <td>${truncateText(entry.note || "-", 40)}</td>
@@ -2061,15 +2601,21 @@
               <h4>${matched ? `已匹配 ${result.asset.code}｜${result.asset.name}` : "尚未匹配輔具"}</h4>
               <p>QR 原始內容：${result.rawText || "未辨識到，已改用檔名或手動編號"}</p>
               <p>比對編號：${result.code || "尚無"}</p>
-              <p>${matched ? `目前照片數：${result.asset.photos.length} 張` : "請手動輸入編號或重拍更清楚的照片。"}</p>
+              <p>${
+                matched
+                  ? `資料來源：${getAssetDatasetConfig(result.asset.assetKind).label} / 目前照片數：${result.asset.photos.length} 張`
+                  : "請手動輸入編號或重拍更清楚的照片。"
+              }</p>
               <div class="preview-chip-row">
                 <span class="chip">${matched ? "匹配成功" : "需要人工確認"}</span>
+                ${matched ? `<span class="chip">${getAssetDatasetConfig(result.asset.assetKind).label}</span>` : ""}
+                ${result.matchCount > 1 ? `<span class="chip">同編號 ${result.matchCount} 筆</span>` : ""}
               </div>
               ${
                 matched
                   ? `<div class="row-actions" style="margin-top:14px;">
                        <button type="button" data-action="upload-single">上傳這張照片</button>
-                       <button type="button" data-action="open-asset" data-id="${result.asset.id}">查看輔具資料</button>
+                       <button type="button" data-action="open-asset" data-id="${result.asset.id}" data-kind="${result.asset.assetKind}">查看輔具資料</button>
                      </div>`
                   : ""
               }
@@ -2097,11 +2643,16 @@
                   <p>${item.code ? `編號 ${item.code}` : "未取得編號"} / ${item.assetName ? `已對應 ${item.assetName}` : "尚未匹配"}</p>
                   <div class="preview-chip-row">
                     <span class="chip">${item.assetId ? "已匹配" : "未匹配"}</span>
+                    ${item.assetKind ? `<span class="chip">${getAssetDatasetConfig(item.assetKind).label}</span>` : ""}
                     ${item.uploaded ? '<span class="chip">已上傳</span>' : ""}
                   </div>
                 </div>
                 <div class="row-actions">
-                  ${item.assetId ? `<button type="button" data-action="open-asset" data-id="${item.assetId}">查看輔具</button>` : ""}
+                  ${
+                    item.assetId
+                      ? `<button type="button" data-action="open-asset" data-id="${item.assetId}" data-kind="${item.assetKind}">查看輔具</button>`
+                      : ""
+                  }
                 </div>
               </article>
             `,
@@ -2114,12 +2665,16 @@
       function renderAll() {
         renderViews();
         setAuthControls();
+        renderAssetDatasetState();
         renderMetrics();
-        renderImportPreview();
+        renderImportPreviews();
         renderCountySummary();
         renderInventoryFeed();
         populateFilterOptions();
         renderAssetTable();
+        syncLoanIdentity();
+        renderLoanCaseOptions();
+        renderLoanAssetQueue();
         renderLoanTable();
         renderCasePreview();
         renderCaseTable();
@@ -2127,7 +2682,7 @@
         renderBatchQueue();
         populateAssetCodeOptions();
         const selectedAsset = getSelectedAsset();
-        if (selectedAsset) {
+        if (selectedAsset && selectedAsset.assetKind === state.assetDataset) {
           fillAssetForm(selectedAsset);
         } else {
           resetAssetForm();
@@ -2139,17 +2694,23 @@
           renderAll();
           return;
         }
-        updateSyncBadge("從 Google Drive 同步中...", "loading");
+        updateSyncBadge("從 Firebase 同步中...", "loading");
         try {
-          const [assets, loans, cases] = await Promise.all([listAssets(), listLoanRecords(), listCaseRecords()]);
-          state.assets = assets;
+          const [recycleAssets, projectAssets, loans, cases] = await Promise.all([
+            listAssets("recycle"),
+            listAssets("project"),
+            listLoanRecords(),
+            listCaseRecords(),
+          ]);
+          state.recycleAssets = recycleAssets;
+          state.projectAssets = projectAssets;
           state.loans = loans;
           state.cases = cases;
-          updateSyncBadge("Google Drive 資料已同步", "success");
+          updateSyncBadge("Firebase 資料已同步", "success");
           renderAll();
         } catch (error) {
           console.error(error);
-          updateSyncBadge("同步失敗，請檢查 Google Drive 權限", "error");
+          updateSyncBadge("同步失敗，請檢查 Firebase 權限", "error");
         }
       }
 
@@ -2203,18 +2764,19 @@
         return "";
       }
 
-      function resolveCategory(sheetName = "") {
-        if (sheetName.includes("單位輔具")) return "單位輔具";
-        if (sheetName.includes("評估工具")) return "評估工具";
-        if (sheetName.includes("維修工具")) return "維修工具";
-        if (sheetName.includes("耗材")) return "耗材";
-        if (sheetName.includes("二手媒合")) return "二手媒合";
-        if (sheetName.includes("超過使用年限")) return "超過使用年限";
-        if (sheetName.includes("移撥")) return "移撥、遺失";
-        if (sheetName.includes("增購")) return "增購";
+      function resolveRecycleCategory(sheetName = "") {
         if (sheetName.includes("報廢")) return "報廢";
         if (sheetName.includes("中高齡")) return "中高齡回收輔具";
         if (sheetName.includes("輔具清單")) return "回收輔具";
+        if (sheetName.includes("移撥")) return "移撥、遺失";
+        return normalizeText(sheetName);
+      }
+
+      function resolveProjectCategory(sheetName = "") {
+        if (sheetName.includes("單位輔具")) return "職再輔具";
+        if (sheetName.includes("評估工具")) return "評估工具";
+        if (sheetName.includes("維修工具")) return "維修工具";
+        if (sheetName.includes("耗材")) return "耗材";
         return normalizeText(sheetName);
       }
 
@@ -2257,7 +2819,7 @@
         });
       }
 
-      async function parseAssetWorkbook(file) {
+      async function parseRecycleWorkbook(file) {
         const buffer = await file.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
         const records = [];
@@ -2298,10 +2860,11 @@
                 uploadedAt: "",
               }));
             records.push({
-              id: createStableId("asset", `${file.name}|${sheetName}|${rowIndex + 1}|${code}|${name}`),
+              id: createStableId("asset", `recycle|${file.name}|${sheetName}|${rowIndex + 1}|${code}|${name}`),
+              assetKind: "recycle",
               code: normalizeText(code),
               name: normalizeText(name),
-              category: resolveCategory(sheetName),
+              category: resolveRecycleCategory(sheetName),
               county: currentCounty || inferCountyFromCode(code),
               status: deriveStatus(
                 sheetName,
@@ -2322,6 +2885,73 @@
               reuseRecord: pickField(row, headerMap, ["再利用紀錄", "回收時間"]),
               remarks: pickField(row, headerMap, ["備註"]),
               photos: photoEntries,
+              createdAt: new Date().toISOString(),
+            });
+            count += 1;
+          }
+          sheetSummaries.push({ fileName: file.name, sheetName, count, skipped: false });
+        });
+        return { fileName: file.name, records, sheetSummaries };
+      }
+
+      async function parseProjectWorkbook(file) {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
+        const records = [];
+        const sheetSummaries = [];
+        workbook.SheetNames.forEach((sheetName) => {
+          const sheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(sheet, {
+            header: 1,
+            raw: false,
+            defval: "",
+          });
+          const headerRowIndex = findAssetHeaderRow(rows);
+          if (headerRowIndex === -1) {
+            sheetSummaries.push({ fileName: file.name, sheetName, count: 0, skipped: true });
+            return;
+          }
+          const headerMap = buildHeaderMap(rows[headerRowIndex]);
+          let count = 0;
+          for (let rowIndex = headerRowIndex + 1; rowIndex < rows.length; rowIndex += 1) {
+            const row = rows[rowIndex];
+            if (isMostlyEmpty(row)) continue;
+            const code = pickField(row, headerMap, ["編號"]);
+            const name = pickField(row, headerMap, ["名稱", "輔具名稱"]);
+            if (!code && !name) continue;
+            if (/總計|百分比|高屏澎東區/.test(`${code}${name}`)) continue;
+            const tagStatus = pickField(row, headerMap, ["是否已貼標籤"]);
+            const kit = pickField(row, headerMap, ["Kit評估包"]);
+            const quantity = pickField(row, headerMap, ["數量"]);
+            const totalPrice = pickField(row, headerMap, ["總價"]);
+            const description = [
+              pickField(row, headerMap, ["說明"]),
+              kit ? `Kit評估包：${kit}` : "",
+              quantity ? `數量：${quantity}` : "",
+              totalPrice ? `總價：${totalPrice}` : "",
+            ]
+              .filter(Boolean)
+              .join("；");
+            const remarks = [tagStatus ? `已貼標籤：${tagStatus}` : ""].filter(Boolean).join("；");
+            records.push({
+              id: createStableId("asset", `project|${file.name}|${sheetName}|${rowIndex + 1}|${code}|${name}`),
+              assetKind: "project",
+              code: normalizeText(code),
+              name: normalizeText(name),
+              category: resolveProjectCategory(sheetName),
+              county: "",
+              status: deriveStatus(sheetName, pickField(row, headerMap, ["清點狀況", "借用狀況"]), "", ""),
+              location: "",
+              purchaseYear: pickField(row, headerMap, ["購置年份", "年度"]),
+              unitPrice: pickField(row, headerMap, ["單價"]),
+              brand: pickField(row, headerMap, ["品牌", "廠牌"]),
+              model: pickField(row, headerMap, ["型號/尺寸", "型號", "尺寸"]),
+              description,
+              sourceInfo: "",
+              maintenanceRecord: "",
+              reuseRecord: "",
+              remarks,
+              photos: [],
               createdAt: new Date().toISOString(),
             });
             count += 1;
@@ -2451,38 +3081,73 @@
         };
       }
 
-      async function handleAssetImport(event) {
+      async function handleRecycleImport(event) {
         const files = [...(event.target.files || [])];
         if (files.length === 0) return;
-        updateSyncBadge("分析 Excel 中...", "loading");
+        updateSyncBadge("分析回收輔具 Excel 中...", "loading");
         try {
-          const parsed = await Promise.all(files.map((file) => parseAssetWorkbook(file)));
-          state.importedAssets = parsed.flatMap((item) => item.records);
-          state.importedAssetSheets = parsed.flatMap((item) => item.sheetSummaries);
-          updateSyncBadge(`已整理 ${state.importedAssets.length} 筆 Excel 資料`, "success");
+          const parsed = await Promise.all(files.map((file) => parseRecycleWorkbook(file)));
+          state.importedRecycleAssets = parsed.flatMap((item) => item.records);
+          state.importedRecycleSheets = parsed.flatMap((item) => item.sheetSummaries);
+          updateSyncBadge(`已整理 ${state.importedRecycleAssets.length} 筆回收輔具資料`, "success");
         } catch (error) {
           console.error(error);
-          state.importedAssets = [];
-          state.importedAssetSheets = [];
-          updateSyncBadge("Excel 解析失敗", "error");
+          state.importedRecycleAssets = [];
+          state.importedRecycleSheets = [];
+          updateSyncBadge("回收輔具 Excel 解析失敗", "error");
         }
         setAuthControls();
-        renderImportPreview();
+        renderImportPreviews();
       }
 
-      async function handleSyncImportedAssets() {
-        if (!state.user || state.importedAssets.length === 0) return;
-        updateSyncBadge("寫入 Google Drive 中...", "loading");
+      async function handleProjectImport(event) {
+        const files = [...(event.target.files || [])];
+        if (files.length === 0) return;
+        updateSyncBadge("分析職再清單 Excel 中...", "loading");
         try {
-          await upsertAssets(state.importedAssets);
-          state.importedAssets = [];
-          state.importedAssetSheets = [];
-          elements.assetImportInput.value = "";
-          updateSyncBadge("Excel 資料已同步到 Google Drive", "success");
+          const parsed = await Promise.all(files.map((file) => parseProjectWorkbook(file)));
+          state.importedProjectAssets = parsed.flatMap((item) => item.records);
+          state.importedProjectSheets = parsed.flatMap((item) => item.sheetSummaries);
+          updateSyncBadge(`已整理 ${state.importedProjectAssets.length} 筆職再清單資料`, "success");
+        } catch (error) {
+          console.error(error);
+          state.importedProjectAssets = [];
+          state.importedProjectSheets = [];
+          updateSyncBadge("職再清單 Excel 解析失敗", "error");
+        }
+        setAuthControls();
+        renderImportPreviews();
+      }
+
+      async function handleSyncRecycleAssets() {
+        if (!state.user || state.importedRecycleAssets.length === 0) return;
+        updateSyncBadge("寫入回收輔具到 Firebase 中...", "loading");
+        try {
+          await upsertAssets("recycle", state.importedRecycleAssets);
+          state.importedRecycleAssets = [];
+          state.importedRecycleSheets = [];
+          elements.recycleImportInput.value = "";
+          updateSyncBadge("回收輔具資料已同步到 Firebase", "success");
           await refreshRemoteData();
         } catch (error) {
           console.error(error);
-          updateSyncBadge("同步失敗", "error");
+          updateSyncBadge("回收輔具同步失敗", "error");
+        }
+      }
+
+      async function handleSyncProjectAssets() {
+        if (!state.user || state.importedProjectAssets.length === 0) return;
+        updateSyncBadge("寫入職再清單到 Firebase 中...", "loading");
+        try {
+          await upsertAssets("project", state.importedProjectAssets);
+          state.importedProjectAssets = [];
+          state.importedProjectSheets = [];
+          elements.projectImportInput.value = "";
+          updateSyncBadge("職再清單資料已同步到 Firebase", "success");
+          await refreshRemoteData();
+        } catch (error) {
+          console.error(error);
+          updateSyncBadge("職再清單同步失敗", "error");
         }
       }
 
@@ -2490,13 +3155,15 @@
         event.preventDefault();
         if (!state.user) return;
         const existing = getSelectedAsset();
+        const assetKind = normalizeAssetKind(existing?.assetKind || state.assetDataset);
         const [brand = "", model = ""] = normalizeText(elements.assetBrandModel.value)
           .split("/")
           .map((value) => normalizeText(value));
         const record = {
           id:
             elements.assetId.value ||
-            createStableId("asset-manual", `${elements.assetCode.value}|${elements.assetName.value}`),
+            createStableId("asset-manual", `${assetKind}|${elements.assetCode.value}|${elements.assetName.value}`),
+          assetKind,
           code: normalizeText(elements.assetCode.value),
           name: normalizeText(elements.assetName.value),
           category: normalizeText(elements.assetCategory.value),
@@ -2512,9 +3179,10 @@
         };
         updateSyncBadge("儲存輔具中...", "loading");
         try {
-          await saveAsset(record);
+          await saveAsset(assetKind, record);
           state.selectedAssetId = record.id;
-          updateSyncBadge("輔具資料已儲存到 Google Drive", "success");
+          state.selectedAssetKind = assetKind;
+          updateSyncBadge("輔具資料已儲存到 Firebase", "success");
           await refreshRemoteData();
         } catch (error) {
           console.error(error);
@@ -2528,14 +3196,73 @@
         if (!window.confirm(`確定要刪除 ${asset.code}｜${asset.name} 嗎？`)) return;
         updateSyncBadge("刪除輔具中...", "loading");
         try {
-          await deleteAsset(asset.id);
+          await deleteAsset(asset.assetKind, asset.id);
           state.selectedAssetId = "";
+          state.selectedAssetKind = state.assetDataset;
           updateSyncBadge("輔具已刪除", "success");
           await refreshRemoteData();
         } catch (error) {
           console.error(error);
           updateSyncBadge("刪除失敗", "error");
         }
+      }
+
+      function resolveInventoryMatch(code) {
+        const matches = findAssetsByCode(code, "all");
+        const preferred = matches.find((asset) => asset.assetKind === state.assetDataset) || matches[0] || null;
+        return {
+          asset: preferred,
+          matchCount: matches.length,
+        };
+      }
+
+      function addLoanAssetToQueue(asset) {
+        if (!asset) return false;
+        if (state.loanAssetQueue.some((item) => item.id === asset.id)) return false;
+        state.loanAssetQueue.push({
+          id: asset.id,
+          code: asset.code,
+          name: asset.name,
+          category: asset.category,
+          status: asset.status,
+          assetKind: asset.assetKind,
+        });
+        renderLoanAssetQueue();
+        return true;
+      }
+
+      function resetLoanWorkflow() {
+        state.loanAssetQueue = [];
+        state.selectedLoanCaseIds = [];
+        elements.loanCaseSearch.value = "";
+        elements.loanAssetCode.value = "";
+        elements.loanNote.value = "";
+        renderLoanCaseOptions();
+        renderLoanAssetQueue();
+        syncLoanIdentity();
+      }
+
+      async function handleLoanQrPhotos(event) {
+        const files = [...(event.target.files || [])];
+        if (files.length === 0) return;
+        updateSyncBadge(`辨識借用 QR ${files.length} 張中...`, "loading");
+        let successCount = 0;
+        for (const file of files) {
+          try {
+            const decoded = await decodeQrFromFile(file);
+            const code = decoded.code || extractAssetCode(file.name);
+            const asset = getDecoratedAssets("project").find(
+              (entry) => normalizeAssetCode(entry.code) === normalizeAssetCode(code),
+            );
+            if (asset && addLoanAssetToQueue(asset)) {
+              successCount += 1;
+            }
+          } catch (error) {
+            console.error(error);
+          }
+        }
+        elements.loanQrPhotoInput.value = "";
+        updateSyncBadge(successCount > 0 ? `已加入 ${successCount} 件設備` : "借用 QR 未匹配到設備", successCount > 0 ? "success" : "warn");
       }
 
       async function handleSinglePhoto(event) {
@@ -2546,19 +3273,18 @@
           const decoded = await decodeQrFromFile(file);
           const manualCode = normalizeAssetCode(elements.inventoryManualCode.value);
           const code = manualCode || decoded.code || extractAssetCode(file.name);
-          const asset = getDecoratedAssets().find(
-            (entry) => normalizeAssetCode(entry.code) === normalizeAssetCode(code),
-          );
+          const match = resolveInventoryMatch(code);
           state.lastSingleResult = {
             ...decoded,
             file,
             code,
-            asset,
+            asset: match.asset,
+            matchCount: match.matchCount,
             uploaded: false,
           };
           renderSingleInventoryResult();
-          updateSyncBadge(asset ? "已找到對應輔具" : "未匹配到輔具，請手動輸入編號", asset ? "success" : "warn");
-          if (asset && elements.inventoryAutoupload.checked && state.user) {
+          updateSyncBadge(match.asset ? "已找到對應輔具" : "未匹配到輔具，請手動輸入編號", match.asset ? "success" : "warn");
+          if (match.asset && elements.inventoryAutoupload.checked && state.user) {
             await uploadSingleResult();
           }
         } catch (error) {
@@ -2569,17 +3295,20 @@
 
       async function uploadSingleResult() {
         if (!state.user || !state.lastSingleResult?.asset) return;
-        updateSyncBadge("上傳盤點照片中...", "loading");
+        updateSyncBadge("壓縮並上傳盤點照片到 Google Drive...", "loading");
         try {
           await uploadAssetPhoto(state.lastSingleResult.asset.id, state.lastSingleResult.file, {
             code: state.lastSingleResult.code,
             rawQrText: state.lastSingleResult.rawText,
             note: "單張盤點上傳",
-          });
+          }, state.lastSingleResult.asset.assetKind);
           state.lastSingleResult.uploaded = true;
-          updateSyncBadge("盤點照片已上傳到 Google Drive", "success");
+          updateSyncBadge("盤點照片已壓縮並上傳到 Google Drive", "success");
           await refreshRemoteData();
-          const refreshedAsset = getDecoratedAssets().find((asset) => asset.id === state.lastSingleResult.asset.id);
+          const refreshedAsset = findAssetById(
+            state.lastSingleResult.asset.id,
+            state.lastSingleResult.asset.assetKind,
+          );
           state.lastSingleResult.asset = refreshedAsset || state.lastSingleResult.asset;
           renderSingleInventoryResult();
         } catch (error) {
@@ -2598,17 +3327,16 @@
           try {
             const decoded = await decodeQrFromFile(file);
             const code = decoded.code || extractAssetCode(file.name);
-            const asset = getDecoratedAssets().find(
-              (entry) => normalizeAssetCode(entry.code) === normalizeAssetCode(code),
-            );
+            const match = resolveInventoryMatch(code);
             state.batchQueue.push({
               id: createStableId("batch", `${file.name}|${Date.now()}`),
               file,
               previewUrl: decoded.previewUrl,
               rawQrText: decoded.rawText,
               code,
-              assetId: asset?.id || "",
-              assetName: asset?.name || "",
+              assetId: match.asset?.id || "",
+              assetName: match.asset?.name || "",
+              assetKind: match.asset?.assetKind || "",
               uploaded: false,
             });
             renderBatchQueue();
@@ -2621,6 +3349,7 @@
               code: "",
               assetId: "",
               assetName: "",
+              assetKind: "",
               uploaded: false,
             });
             renderBatchQueue();
@@ -2633,18 +3362,18 @@
         if (!state.user) return;
         const pending = state.batchQueue.filter((item) => item.assetId && !item.uploaded);
         if (pending.length === 0) return;
-        updateSyncBadge(`批次上傳 ${pending.length} 張照片中...`, "loading");
+        updateSyncBadge(`批次壓縮並上傳 ${pending.length} 張照片到 Google Drive...`, "loading");
         try {
           for (const item of pending) {
             await uploadAssetPhoto(item.assetId, item.file, {
               code: item.code,
               rawQrText: item.rawQrText,
               note: "批次盤點上傳",
-            });
+            }, item.assetKind);
             item.uploaded = true;
             renderBatchQueue();
           }
-          updateSyncBadge("批次照片已全部上傳", "success");
+          updateSyncBadge("批次照片已壓縮並全部上傳到 Google Drive", "success");
           await refreshRemoteData();
         } catch (error) {
           console.error(error);
@@ -2655,28 +3384,41 @@
       async function handleLoanSubmit(event) {
         event.preventDefault();
         if (!state.user) return;
-        const asset = getDecoratedAssets().find(
-          (entry) => normalizeAssetCode(entry.code) === normalizeAssetCode(elements.loanAssetCode.value),
-        );
-        if (!asset) {
-          updateSyncBadge("找不到這個輔具編號", "warn");
+        if (normalizeText(elements.loanAssetCode.value)) {
+          const pendingAsset = getDecoratedAssets("project").find(
+            (entry) => normalizeAssetCode(entry.code) === normalizeAssetCode(elements.loanAssetCode.value),
+          );
+          addLoanAssetToQueue(pendingAsset);
+          elements.loanAssetCode.value = "";
+        }
+        if (state.loanAssetQueue.length === 0) {
+          updateSyncBadge("請先掃描或輸入至少一件設備", "warn");
           return;
         }
+        const selectedCases = state.cases.filter((entry) => state.selectedLoanCaseIds.includes(entry.id));
         updateSyncBadge("儲存借還紀錄中...", "loading");
         try {
-          await addLoanRecord({
-            assetId: asset.id,
-            assetCode: asset.code,
-            assetName: asset.name,
-            action: elements.loanAction.value,
-            person: normalizeText(elements.loanPerson.value),
-            unit: normalizeText(elements.loanUnit.value),
-            date: elements.loanDate.value,
-            note: normalizeText(elements.loanNote.value),
-          });
-          elements.loanForm.reset();
+          const processedCount = state.loanAssetQueue.length;
+          for (const asset of state.loanAssetQueue) {
+            await addLoanRecord({
+              assetId: asset.id,
+              assetCode: asset.code,
+              assetName: asset.name,
+              action: elements.loanAction.value,
+              person: normalizeText(elements.loanPerson.value),
+              unit: normalizeText(elements.loanUnit.value),
+              date: elements.loanDate.value,
+              note: normalizeText(elements.loanNote.value),
+              verifiedByName: state.user?.displayName || "",
+              verifiedByEmail: state.user?.email || "",
+              targetCaseIds: selectedCases.map((entry) => entry.id),
+              targetCaseLabels: selectedCases.map((entry) => `${entry.caseCode || "未填編號"}｜${entry.name || "未填姓名"}`),
+            });
+          }
+          elements.loanUnit.value = "";
           elements.loanDate.valueAsDate = new Date();
-          updateSyncBadge("借還紀錄已寫入 Google Drive", "success");
+          resetLoanWorkflow();
+          updateSyncBadge(`借還紀錄已寫入 Firebase，共 ${processedCount} 件`, "success");
           await refreshRemoteData();
         } catch (error) {
           console.error(error);
@@ -2711,7 +3453,7 @@
           state.importedCases = [];
           state.importedCaseSheets = [];
           elements.caseImportInput.value = "";
-          updateSyncBadge("個案資料已同步到 Google Drive", "success");
+          updateSyncBadge("個案資料已同步到 Firebase", "success");
           await refreshRemoteData();
         } catch (error) {
           console.error(error);
@@ -2741,19 +3483,23 @@
         elements.navButtons.forEach((button) => {
           button.addEventListener("click", () => {
             state.currentView = button.dataset.viewTarget;
-            renderViews();
+            renderAll();
           });
         });
 
         elements.signInButton.addEventListener("click", async () => {
           try {
-            updateSyncBadge("Google Drive 授權中...", "loading");
-            await signInWithGoogle();
-            updateSyncBadge("已授權 Google Drive", "success");
-            await refreshRemoteData();
+            updateSyncBadge("Google 授權與登入中...", "loading");
+            const user = await signInWithGoogle();
+            if (user) {
+              updateSyncBadge("已登入，可同步資料並上傳 Google Drive", "success");
+              await refreshRemoteData();
+            } else {
+              updateSyncBadge("正在跳轉 Google 登入...", "loading");
+            }
           } catch (error) {
             console.error(error);
-            updateSyncBadge(error.message || "Google 授權失敗", "error");
+            updateSyncBadge(error.message || "Google / Firebase 登入失敗", "error");
           }
         });
 
@@ -2764,18 +3510,32 @@
         });
 
         elements.refreshButton.addEventListener("click", refreshRemoteData);
-        elements.assetImportInput.addEventListener("change", handleAssetImport);
-        elements.syncAssetsButton.addEventListener("click", handleSyncImportedAssets);
+        elements.recycleImportInput.addEventListener("change", handleRecycleImport);
+        elements.syncRecycleAssetsButton.addEventListener("click", handleSyncRecycleAssets);
+        elements.projectImportInput.addEventListener("change", handleProjectImport);
+        elements.syncProjectAssetsButton.addEventListener("click", handleSyncProjectAssets);
+        elements.assetDatasetSwitch.addEventListener("change", () => {
+          state.assetDataset = normalizeAssetKind(elements.assetDatasetSwitch.value);
+          state.selectedAssetId = "";
+          state.selectedAssetKind = state.assetDataset;
+          elements.assetSearch.value = "";
+          elements.assetCategoryFilter.value = "";
+          elements.assetCountyFilter.value = "";
+          renderAll();
+        });
         elements.assetSearch.addEventListener("input", renderAssetTable);
         elements.assetCategoryFilter.addEventListener("change", renderAssetTable);
         elements.assetCountyFilter.addEventListener("change", renderAssetTable);
+        elements.downloadWordButton.addEventListener("click", downloadWordList);
         elements.newAssetButton.addEventListener("click", () => {
           state.selectedAssetId = "";
+          state.selectedAssetKind = state.assetDataset;
           resetAssetForm();
         });
         elements.assetForm.addEventListener("submit", handleAssetSave);
         elements.resetAssetFormButton.addEventListener("click", () => {
           state.selectedAssetId = "";
+          state.selectedAssetKind = state.assetDataset;
           resetAssetForm();
         });
         elements.deleteAssetButton.addEventListener("click", handleAssetDelete);
@@ -2788,14 +3548,17 @@
           }
           if (!button) return;
           if (button.dataset.action === "edit-asset") {
+            state.assetDataset = normalizeAssetKind(button.dataset.kind);
             state.selectedAssetId = button.dataset.id;
+            state.selectedAssetKind = normalizeAssetKind(button.dataset.kind);
             renderAll();
           }
           if (button.dataset.action === "open-inventory") {
             state.currentView = "inventory";
-            renderViews();
+            state.assetDataset = normalizeAssetKind(button.dataset.kind);
             elements.inventoryManualCode.value =
-              getDecoratedAssets().find((asset) => asset.id === button.dataset.id)?.code || "";
+              findAssetById(button.dataset.id, button.dataset.kind)?.code || "";
+            renderAll();
           }
           if (button.dataset.action === "preview-photo") {
             await openPhotoModalFromDataset(button.dataset);
@@ -2824,7 +3587,9 @@
           }
           if (button.dataset.action === "open-asset") {
             state.currentView = "assets";
+            state.assetDataset = normalizeAssetKind(button.dataset.kind);
             state.selectedAssetId = button.dataset.id;
+            state.selectedAssetKind = normalizeAssetKind(button.dataset.kind);
             renderAll();
           }
         });
@@ -2839,9 +3604,43 @@
           }
           if (button?.dataset.action === "open-asset") {
             state.currentView = "assets";
+            state.assetDataset = normalizeAssetKind(button.dataset.kind);
             state.selectedAssetId = button.dataset.id;
+            state.selectedAssetKind = normalizeAssetKind(button.dataset.kind);
             renderAll();
           }
+        });
+        elements.loanCaseSearch.addEventListener("input", renderLoanCaseOptions);
+        elements.loanCaseOptions.addEventListener("change", (event) => {
+          const checkbox = event.target.closest("input[type='checkbox'][data-case-id]");
+          if (!checkbox) return;
+          if (checkbox.checked) {
+            state.selectedLoanCaseIds = [...new Set([...state.selectedLoanCaseIds, checkbox.dataset.caseId])];
+          } else {
+            state.selectedLoanCaseIds = state.selectedLoanCaseIds.filter((id) => id !== checkbox.dataset.caseId);
+          }
+          renderLoanCaseOptions();
+        });
+        elements.loanAssetCode.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          const asset = getDecoratedAssets("project").find(
+            (entry) => normalizeAssetCode(entry.code) === normalizeAssetCode(elements.loanAssetCode.value),
+          );
+          if (!asset) {
+            updateSyncBadge("找不到這個輔具編號", "warn");
+            return;
+          }
+          addLoanAssetToQueue(asset);
+          elements.loanAssetCode.value = "";
+          updateSyncBadge("設備已加入借用清單", "success");
+        });
+        elements.loanQrPhotoInput.addEventListener("change", handleLoanQrPhotos);
+        elements.loanAssetQueue.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-action='remove-loan-asset']");
+          if (!button) return;
+          state.loanAssetQueue = state.loanAssetQueue.filter((asset) => asset.id !== button.dataset.id);
+          renderLoanAssetQueue();
         });
         elements.loanForm.addEventListener("submit", handleLoanSubmit);
         elements.caseImportInput.addEventListener("change", handleCaseImport);
@@ -2856,13 +3655,10 @@
 
       function init() {
         elements.loanDate.valueAsDate = new Date();
+        bindFirebaseAuthObserver();
         bindEvents();
         renderAll();
-        if (normalizeText(DRIVE_CONFIG.clientId).includes("請改")) {
-          updateSyncBadge("請先設定 DRIVE_CONFIG.clientId", "warn");
-          return;
-        }
-        updateSyncBadge("請先按「Google 授權 Drive」", "idle");
+        updateSyncBadge("請先按「Google / Firebase 登入」", "idle");
       }
 
       init();
