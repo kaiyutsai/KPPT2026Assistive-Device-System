@@ -574,6 +574,75 @@
         margin-bottom: 14px;
       }
 
+      .stack-layout {
+        display: grid;
+        gap: 18px;
+      }
+
+      .loan-command-panel {
+        display: grid;
+        gap: 14px;
+      }
+
+      .loan-command-row,
+      .dialog-mode-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .dialog-mode-row p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .table-caption-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .table-caption-row p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .field-display {
+        display: flex;
+        align-items: center;
+        min-height: 50px;
+        color: var(--text);
+      }
+
+      .case-toolbar {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .filter-tab-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .filter-tab {
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(31, 54, 120, 0.1);
+        background: rgba(255, 255, 255, 0.92);
+        color: var(--muted);
+      }
+
+      .filter-tab.active {
+        color: #2752ff;
+        border-color: rgba(39, 82, 255, 0.18);
+        background: linear-gradient(135deg, rgba(39, 82, 255, 0.12), rgba(39, 82, 255, 0.03));
+      }
+
       .case-option-list,
       .loan-asset-queue {
         max-height: 260px;
@@ -675,6 +744,46 @@
         color: var(--muted);
       }
 
+      .form-modal {
+        width: min(760px, calc(100vw - 28px));
+        padding: 22px;
+        border: 1px solid rgba(31, 54, 120, 0.08);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.98);
+      }
+
+      .loan-modal {
+        width: min(980px, calc(100vw - 24px));
+        max-height: calc(100vh - 24px);
+        overflow: auto;
+      }
+
+      .loan-status-surface .table-wrap {
+        min-height: 420px;
+      }
+
+      .form-modal::backdrop {
+        background: rgba(7, 11, 25, 0.42);
+        backdrop-filter: blur(6px);
+      }
+
+      .dialog-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .dialog-head-copy {
+        display: grid;
+        gap: 6px;
+      }
+
+      .dialog-head-copy p {
+        margin: 0;
+      }
+
       @media (max-width: 1180px) {
         .app-shell {
           grid-template-columns: 1fr;
@@ -727,6 +836,11 @@
         .toolbar {
           width: 100%;
         }
+
+        .loan-command-row > *,
+        .dialog-mode-row > .pill {
+          width: 100%;
+        }
       }
     </style>
   </head>
@@ -736,13 +850,10 @@
         <div class="brand-block">
 <p class="brand-kicker">One File / GitHub Pages / Firebase</p>
           <h1>高屏澎東職務再設計輔具管理資料庫</h1>
-          <p class="brand-copy">
-            這是單檔 HTML 版本。網站本身只要上傳一個 HTML，資料與照片會寫進 Google 雲端硬碟。
-          </p>
         </div>
 
         <nav class="nav-stack">
-          <button class="nav-btn active" data-view-target="dashboard">總覽 / 匯入</button>
+          <button class="nav-btn active" data-view-target="dashboard">總覽</button>
           <button class="nav-btn" data-view-target="recycle" data-asset-kind="recycle">回收輔具管理</button>
           <button class="nav-btn" data-view-target="assets" data-asset-kind="project">單位 / 工具清冊</button>
           <button class="nav-btn" data-view-target="inventory">盤點拍照</button>
@@ -755,7 +866,7 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">營運工作台</p>
-            <h2 id="workspace-title">總覽 / 匯入</h2>
+            <h2 id="workspace-title">總覽</h2>
           </div>
           <div class="topbar-actions">
             <div id="user-chip" class="user-chip" hidden></div>
@@ -766,61 +877,46 @@
           </div>
         </header>
 
-        <section class="hero-band">
-          <article class="metric-panel">
-            <p>回收輔具</p>
-            <strong id="metric-total-assets">0</strong>
-          </article>
-          <article class="metric-panel">
-            <p>職再借用清單</p>
-            <strong id="metric-photo-assets">0</strong>
-          </article>
-          <article class="metric-panel">
-            <p>借出中</p>
-            <strong id="metric-loaned-assets">0</strong>
-          </article>
-          <article class="metric-panel">
-            <p>最近盤點</p>
-            <strong id="metric-last-inventory">尚無</strong>
-          </article>
-        </section>
-
         <section class="view active" data-view="dashboard">
-          <div class="split-layout">
-            <section class="surface">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">單位 / 工具清冊</p>
-                  <h3>匯入職再、評估、維修工具與耗材</h3>
-                </div>
-              </div>
-
-              <div class="stack-list">
-                <article class="preview-card upload-panel">
-                  <div class="section-head">
-                    <div>
-                      <p class="eyebrow">職再借用清單</p>
-                      <h3>職再輔具、評估、維修工具、耗材編號清單1120210.xlsx</h3>
-                    </div>
-                    <label class="file-btn">
-                      <input id="project-import-input" type="file" accept=".xls,.xlsx" data-requires-auth />
-                      匯入職再清單 Excel
-                    </label>
-                  </div>
-                  <p class="muted-note compact-note">選檔後會自動同步到 Firebase。</p>
-                  <div id="project-import-preview" class="stack-list empty-state">尚未匯入職再清單 Excel。</div>
-                </article>
-              </div>
+          <div class="stack-layout">
+            <section class="hero-band">
+              <article class="metric-panel">
+                <p>回收輔具</p>
+                <strong id="metric-total-assets">0</strong>
+              </article>
+              <article class="metric-panel">
+                <p>職再借用清單</p>
+                <strong id="metric-photo-assets">0</strong>
+              </article>
+              <article class="metric-panel">
+                <p>借出中</p>
+                <strong id="metric-loaned-assets">0</strong>
+              </article>
+              <article class="metric-panel">
+                <p>最近盤點</p>
+                <strong id="metric-last-inventory">尚無</strong>
+              </article>
             </section>
 
             <section class="surface">
               <div class="section-head">
                 <div>
-                  <p class="eyebrow">統計摘要</p>
-                  <h3>回收縣市分布與最近盤點</h3>
+                  <p class="eyebrow">回收輔具狀況</p>
+                  <h3>回收庫存、縣市與列管摘要</h3>
                 </div>
               </div>
+              <div id="dashboard-recycle-summary" class="summary-grid"></div>
               <div id="county-summary" class="summary-grid"></div>
+            </section>
+
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">單位 / 工具狀況</p>
+                  <h3>在庫、借出與最近借還</h3>
+                </div>
+              </div>
+              <div id="dashboard-project-summary" class="summary-grid"></div>
               <div id="inventory-feed" class="timeline"></div>
             </section>
           </div>
@@ -873,30 +969,46 @@
         </section>
 
         <section class="view" data-view="assets">
-          <div class="section-head sticky-head">
-            <div>
-              <p class="eyebrow">資料清冊</p>
-              <h3 id="asset-view-title">回收輔具清單</h3>
-            </div>
-            <div class="toolbar">
-              <select id="asset-dataset-switch" class="field">
-                <option value="recycle">回收輔具清單</option>
-                <option value="project">職再借用清單</option>
-              </select>
-              <input id="asset-search" class="field" type="search" placeholder="搜尋編號、名稱、品牌、備註" />
-              <select id="asset-category-filter" class="field">
-                <option value="">全部類別</option>
-              </select>
-              <select id="asset-county-filter" class="field">
-                <option value="">全部縣市</option>
-              </select>
-              <button id="download-word-btn" class="ghost-btn">下載 Word 清單</button>
-              <button id="new-asset-btn" class="ghost-btn">新增輔具</button>
-            </div>
-          </div>
-
-          <div class="split-layout">
+          <div class="stack-layout">
             <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">單位 / 工具匯入</p>
+                  <h3>匯入職再、評估、維修工具與耗材</h3>
+                </div>
+                <label class="file-btn">
+                  <input id="project-import-input" type="file" accept=".xls,.xlsx" data-requires-auth />
+                  匯入職再清單 Excel
+                </label>
+              </div>
+              <p class="muted-note compact-note">選檔後會自動同步到 Firebase。</p>
+              <div id="project-import-preview" class="stack-list empty-state">尚未匯入職再清單 Excel。</div>
+            </section>
+
+            <div class="section-head sticky-head">
+              <div>
+                <p class="eyebrow">資料清冊</p>
+                <h3 id="asset-view-title">回收輔具清單</h3>
+              </div>
+              <div class="toolbar">
+                <select id="asset-dataset-switch" class="field">
+                  <option value="recycle">回收輔具清單</option>
+                  <option value="project">職再借用清單</option>
+                </select>
+                <input id="asset-search" class="field" type="search" placeholder="搜尋編號、名稱、品牌、備註" />
+                <select id="asset-category-filter" class="field">
+                  <option value="">全部類別</option>
+                </select>
+                <select id="asset-county-filter" class="field">
+                  <option value="">全部縣市</option>
+                </select>
+                <button id="download-word-btn" class="ghost-btn">下載 Word 清單</button>
+                <button id="new-asset-btn" class="ghost-btn">新增輔具</button>
+              </div>
+            </div>
+
+            <div class="split-layout">
+              <section class="surface">
               <div class="table-wrap">
                 <table class="data-table">
                   <thead>
@@ -916,9 +1028,9 @@
                   </tbody>
                 </table>
               </div>
-            </section>
+              </section>
 
-            <aside class="surface detail-surface">
+              <aside class="surface detail-surface">
               <div class="section-head">
                 <div>
                   <p class="eyebrow">明細編修</p>
@@ -979,7 +1091,8 @@
                   <button id="delete-asset-btn" type="button" class="ghost-btn danger" data-requires-auth>刪除此筆</button>
                 </div>
               </form>
-            </aside>
+              </aside>
+            </div>
           </div>
         </section>
 
@@ -1033,70 +1146,29 @@
         </section>
 
         <section class="view" data-view="loans">
-          <div class="split-layout">
-            <section class="surface">
+          <div class="stack-layout">
+            <section class="surface loan-command-panel">
               <div class="section-head">
                 <div>
-                  <p class="eyebrow">職再借用清單</p>
-                  <h3>借還資料會寫入 Firebase 的 `loanRecords` 集合</h3>
+                  <p class="eyebrow">借還操作</p>
+                  <h3>先點借用或歸還，再開啟作業視窗</h3>
+                </div>
+                <div class="loan-command-row">
+                  <button id="loan-borrow-btn" type="button" class="primary-btn" data-requires-auth>借用</button>
+                  <button id="loan-return-btn" type="button" class="ghost-btn" data-requires-auth>歸還</button>
                 </div>
               </div>
-              <p class="muted-note">這裡只使用 `職再輔具、評估、維修工具、耗材編號清單1120210.xlsx` 匯入的資料。</p>
-
-              <form id="loan-form" class="form-grid">
-                <label>
-                  借用者（Google 驗證）
-                  <input id="loan-person" class="field" type="text" required />
-                </label>
-                <label>
-                  動作
-                  <select id="loan-action" class="field">
-                    <option value="borrow">借出</option>
-                    <option value="return">歸還</option>
-                  </select>
-                </label>
-                <label>單位 <input id="loan-unit" class="field" type="text" /></label>
-                <label>日期 <input id="loan-date" class="field" type="date" required /></label>
-
-                <div class="span-2 detail-block">
-                  <div class="detail-block-head">
-                    <h4>試用對象 / 個案</h4>
-                    <span id="loan-target-count" class="pill">0 人</span>
-                  </div>
-                  <input id="loan-case-search" class="field" type="search" placeholder="搜尋編號、姓名、單位，可複選" />
-                  <div id="loan-case-options" class="stack-list empty-state">尚未載入個案資料。</div>
-                </div>
-
-                <div class="span-2 detail-block">
-                  <div class="detail-block-head">
-                    <h4>設備代碼</h4>
-                    <label class="file-btn inline">
-                      <input id="loan-qr-photo-input" type="file" accept="image/*" capture="environment" multiple />
-                      拍照掃 QR
-                    </label>
-                  </div>
-                  <input
-                    id="loan-asset-code"
-                    class="field"
-                    type="text"
-                    list="asset-code-options"
-                    placeholder="輸入代碼後按 Enter，可連續新增多件"
-                  />
-                  <div id="loan-asset-queue" class="stack-list empty-state">尚未掃描設備。</div>
-                </div>
-
-                <label class="span-2">備註 <textarea id="loan-note" class="field" rows="3"></textarea></label>
-                <div class="form-actions span-2">
-                  <button type="submit" class="primary-btn" data-requires-auth>儲存借還紀錄</button>
-                </div>
-              </form>
+              <div class="table-caption-row">
+                <p>適用對象可複選，拍照掃 QR 可連續加入多件設備。</p>
+                <span class="pill">下面是狀況清單</span>
+              </div>
             </section>
 
-            <section class="surface">
+            <section class="surface loan-status-surface">
               <div class="section-head">
                 <div>
-                  <p class="eyebrow">歷史紀錄</p>
-                  <h3>最新借還狀況</h3>
+                  <p class="eyebrow">狀況清單</p>
+                  <h3>最新借用 / 歸還狀況</h3>
                 </div>
               </div>
               <div class="table-wrap">
@@ -1122,48 +1194,54 @@
         </section>
 
         <section class="view" data-view="cases">
-          <div class="split-layout">
-            <section class="surface">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">個案 Excel 匯入</p>
-                  <h3>匯入個案資料並直接同步</h3>
-                </div>
+          <section class="surface">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">對象資料表</p>
+                <h3>搜尋、匯入與維護訪視對象</h3>
+              </div>
+              <div class="toolbar">
+                <button id="case-new-btn" type="button" class="primary-btn" data-requires-auth>新增對象</button>
                 <label class="file-btn">
                   <input id="case-import-input" type="file" accept=".xls,.xlsx" data-requires-auth />
                   匯入個案 Excel
                 </label>
               </div>
-              <p class="muted-note compact-note">選檔後會自動同步到 Firebase。</p>
-              <div id="case-preview" class="stack-list empty-state">尚未匯入個案 Excel。</div>
-            </section>
+            </div>
 
-            <section class="surface">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">個案資料表</p>
-                  <h3>已同步的個案紀錄</h3>
-                </div>
+            <div class="case-toolbar">
+              <div class="filter-tab-row" id="case-search-tabs">
+                <button type="button" class="filter-tab active" data-case-search-field="caseCode">編號</button>
+                <button type="button" class="filter-tab" data-case-search-field="name">個案姓名</button>
+                <button type="button" class="filter-tab" data-case-search-field="displayItem">顯示項目</button>
+                <button type="button" class="filter-tab" data-case-search-field="disabilityCategory">障礙類別</button>
+                <button type="button" class="filter-tab" data-case-search-field="visitDate">訪視日期</button>
+                <button type="button" class="filter-tab" data-case-search-field="visitStaff">訪視人員</button>
               </div>
-              <div class="table-wrap">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>編號 / 案號</th>
-                      <th>年度</th>
-                      <th>類別</th>
-                      <th>姓名</th>
-                      <th>單位</th>
-                      <th>其他資訊</th>
-                    </tr>
-                  </thead>
-                  <tbody id="case-table-body">
-                    <tr><td colspan="6" class="muted-cell">尚未載入個案資料。</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          </div>
+              <input id="case-search-input" class="field" type="search" placeholder="搜尋編號" />
+            </div>
+
+            <div id="case-preview" class="stack-list empty-state">尚未匯入個案 Excel。</div>
+
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>編號</th>
+                    <th>個案姓名</th>
+                    <th>顯示項目</th>
+                    <th>障礙類別</th>
+                    <th>訪視日期</th>
+                    <th>訪視人員</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="case-table-body">
+                  <tr><td colspan="7" class="muted-cell">尚未載入個案資料。</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </section>
       </main>
     </div>
@@ -1174,6 +1252,94 @@
       <button id="photo-modal-close" class="ghost-btn modal-close" type="button">關閉</button>
       <img id="photo-modal-image" alt="輔具照片預覽" />
       <div id="photo-modal-meta" class="photo-modal-meta"></div>
+    </dialog>
+
+    <dialog id="loan-modal" class="form-modal loan-modal">
+      <div class="dialog-head">
+        <div class="dialog-head-copy">
+          <p class="eyebrow">借用 / 歸還</p>
+          <h3 id="loan-modal-title">借用設備</h3>
+          <div class="dialog-mode-row">
+            <span id="loan-mode-pill" class="pill">借用模式</span>
+            <p>先勾選適用對象，再連續拍照或輸入編號加入設備。</p>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button id="loan-reset-btn" type="button" class="ghost-btn">清空</button>
+          <button id="loan-modal-close" type="button" class="ghost-btn">關閉</button>
+        </div>
+      </div>
+      <form id="loan-form" class="form-grid">
+        <input id="loan-action" type="hidden" value="borrow" />
+        <label>
+          借用者（Google 驗證）
+          <input id="loan-person" class="field" type="text" required />
+        </label>
+        <label>
+          目前動作
+          <div id="loan-action-display" class="field field-display">借出</div>
+        </label>
+        <label>單位 <input id="loan-unit" class="field" type="text" /></label>
+        <label>日期 <input id="loan-date" class="field" type="date" required /></label>
+
+        <div class="span-2 detail-block">
+          <div class="detail-block-head">
+            <h4>適用對象 / 個案</h4>
+            <span id="loan-target-count" class="pill">0 人</span>
+          </div>
+          <input id="loan-case-search" class="field" type="search" placeholder="搜尋編號、姓名、顯示項目，可複選" />
+          <div id="loan-case-options" class="stack-list empty-state">尚未載入個案資料。</div>
+        </div>
+
+        <div class="span-2 detail-block">
+          <div class="detail-block-head">
+            <h4>設備代碼</h4>
+            <label class="file-btn inline">
+              <input id="loan-qr-photo-input" type="file" accept="image/*" capture="environment" multiple />
+              連續拍照掃 QR
+            </label>
+          </div>
+          <input
+            id="loan-asset-code"
+            class="field"
+            type="text"
+            list="asset-code-options"
+            placeholder="輸入代碼後按 Enter，可連續新增多件"
+          />
+          <div id="loan-asset-queue" class="stack-list empty-state">尚未掃描設備。</div>
+        </div>
+
+        <label class="span-2">備註 <textarea id="loan-note" class="field" rows="3"></textarea></label>
+        <div class="form-actions span-2">
+          <button id="loan-submit-btn" type="submit" class="primary-btn" data-requires-auth>確認借用</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="case-modal" class="form-modal">
+      <div class="dialog-head">
+        <div class="dialog-head-copy">
+          <p class="eyebrow">對象管理</p>
+          <h3 id="case-form-title">新增 / 編輯對象</h3>
+        </div>
+        <div class="toolbar">
+          <button id="case-reset-btn" type="button" class="ghost-btn">清空</button>
+          <button id="case-modal-close" type="button" class="ghost-btn">關閉</button>
+        </div>
+      </div>
+      <form id="case-form" class="form-grid">
+        <input id="case-id" type="hidden" />
+        <label>編號 <input id="case-code" class="field" type="text" placeholder="例如 JA058" /></label>
+        <label>個案姓名 <input id="case-name" class="field" type="text" placeholder="輸入姓名" /></label>
+        <label class="span-2">顯示項目 <input id="case-display-item" class="field" type="text" placeholder="例如 頸圈、站立架、腰背護具" /></label>
+        <label>障礙類別 <input id="case-disability-category" class="field" type="text" placeholder="輸入障礙類別" /></label>
+        <label>訪視日期 <input id="case-visit-date" class="field" type="text" placeholder="例如 2026/04/23" /></label>
+        <label class="span-2">訪視人員 <input id="case-visit-staff" class="field" type="text" placeholder="輸入訪視人員" /></label>
+        <div class="form-actions span-2">
+          <button type="submit" class="primary-btn" data-requires-auth>儲存對象</button>
+          <button id="case-delete-btn" type="button" class="ghost-btn danger" data-requires-auth>刪除此筆</button>
+        </div>
+      </form>
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -1231,6 +1397,9 @@
         batchQueue: [],
         loanAssetQueue: [],
         selectedLoanCaseIds: [],
+        loanMode: "borrow",
+        selectedCaseId: "",
+        caseSearchField: "caseCode",
         assetDataset: "recycle",
         selectedAssetId: "",
         selectedAssetKind: "recycle",
@@ -1250,7 +1419,7 @@
       let redirectResultChecked = false;
 
       const viewTitles = {
-        dashboard: "總覽 / 匯入",
+        dashboard: "總覽",
         recycle: "回收輔具管理",
         assets: "單位 / 工具清冊",
         inventory: "盤點拍照",
@@ -1273,6 +1442,15 @@
         },
       };
 
+      const CASE_SEARCH_LABELS = {
+        caseCode: "編號",
+        name: "個案姓名",
+        displayItem: "顯示項目",
+        disabilityCategory: "障礙類別",
+        visitDate: "訪視日期",
+        visitStaff: "訪視人員",
+      };
+
       const elements = {
         workspaceTitle: document.querySelector("#workspace-title"),
         navButtons: [...document.querySelectorAll(".nav-btn")],
@@ -1291,10 +1469,12 @@
         recycleOpenAssetsButton: document.querySelector("#recycle-open-assets-btn"),
         recycleNewAssetButton: document.querySelector("#recycle-new-asset-btn"),
         downloadRecycleExcelButton: document.querySelector("#download-recycle-excel-btn"),
+        dashboardRecycleSummary: document.querySelector("#dashboard-recycle-summary"),
         recycleSummaryGrid: document.querySelector("#recycle-summary-grid"),
         recycleQuickList: document.querySelector("#recycle-quick-list"),
         projectImportInput: document.querySelector("#project-import-input"),
         projectImportPreview: document.querySelector("#project-import-preview"),
+        dashboardProjectSummary: document.querySelector("#dashboard-project-summary"),
         countySummary: document.querySelector("#county-summary"),
         inventoryFeed: document.querySelector("#inventory-feed"),
         assetViewTitle: document.querySelector("#asset-view-title"),
@@ -1334,7 +1514,16 @@
         batchPhotoInput: document.querySelector("#batch-photo-input"),
         batchQueue: document.querySelector("#batch-queue"),
         uploadMatchedButton: document.querySelector("#upload-matched-btn"),
+        loanBorrowButton: document.querySelector("#loan-borrow-btn"),
+        loanReturnButton: document.querySelector("#loan-return-btn"),
         loanForm: document.querySelector("#loan-form"),
+        loanModal: document.querySelector("#loan-modal"),
+        loanModalTitle: document.querySelector("#loan-modal-title"),
+        loanModePill: document.querySelector("#loan-mode-pill"),
+        loanActionDisplay: document.querySelector("#loan-action-display"),
+        loanSubmitButton: document.querySelector("#loan-submit-btn"),
+        loanResetButton: document.querySelector("#loan-reset-btn"),
+        loanModalClose: document.querySelector("#loan-modal-close"),
         loanAssetCode: document.querySelector("#loan-asset-code"),
         loanQrPhotoInput: document.querySelector("#loan-qr-photo-input"),
         loanAction: document.querySelector("#loan-action"),
@@ -1348,8 +1537,24 @@
         loanNote: document.querySelector("#loan-note"),
         loanTableBody: document.querySelector("#loan-table-body"),
         caseImportInput: document.querySelector("#case-import-input"),
+        caseSearchInput: document.querySelector("#case-search-input"),
+        caseSearchButtons: [...document.querySelectorAll("[data-case-search-field]")],
+        caseFormTitle: document.querySelector("#case-form-title"),
+        caseForm: document.querySelector("#case-form"),
+        caseId: document.querySelector("#case-id"),
+        caseCode: document.querySelector("#case-code"),
+        caseName: document.querySelector("#case-name"),
+        caseDisplayItem: document.querySelector("#case-display-item"),
+        caseDisabilityCategory: document.querySelector("#case-disability-category"),
+        caseVisitDate: document.querySelector("#case-visit-date"),
+        caseVisitStaff: document.querySelector("#case-visit-staff"),
+        caseResetButton: document.querySelector("#case-reset-btn"),
+        caseDeleteButton: document.querySelector("#case-delete-btn"),
+        caseNewButton: document.querySelector("#case-new-btn"),
         casePreview: document.querySelector("#case-preview"),
         caseTableBody: document.querySelector("#case-table-body"),
+        caseModal: document.querySelector("#case-modal"),
+        caseModalClose: document.querySelector("#case-modal-close"),
         assetCodeOptions: document.querySelector("#asset-code-options"),
         photoModal: document.querySelector("#photo-modal"),
         photoModalImage: document.querySelector("#photo-modal-image"),
@@ -1502,6 +1707,7 @@
               state.projectAssets = [];
               state.loans = [];
               state.cases = [];
+              state.selectedCaseId = "";
               renderAll();
             }
             updateSyncBadge("請先登入 Google / Firebase", "idle");
@@ -1544,6 +1750,9 @@
       async function signOutUser() {
         const { auth } = ensureFirebaseReady();
         await auth.signOut();
+        closeLoanModal();
+        closeCaseModal();
+        closePhotoModal();
         state.user = null;
         state.accessToken = "";
         state.recycleAssets = [];
@@ -1552,6 +1761,7 @@
         state.cases = [];
         state.loanAssetQueue = [];
         state.selectedLoanCaseIds = [];
+        state.selectedCaseId = "";
         state.selectedAssetId = "";
         state.selectedAssetKind = state.assetDataset;
         state.drive = { rootFolderId: "", photoFolderId: "", fileIds: {} };
@@ -1890,6 +2100,11 @@
         await db.collection(getAssetCollectionName(assetKind)).doc(assetId).delete();
       }
 
+      async function deleteCaseRecord(caseId) {
+        const { db } = ensureFirebaseReady();
+        await db.collection(FIREBASE_COLLECTIONS.caseRecords).doc(caseId).delete();
+      }
+
       async function addLoanRecord(payload) {
         const { db } = ensureFirebaseReady();
         const loanRecord = {
@@ -2042,6 +2257,7 @@
         elements.authRequiredTargets.forEach((item) => {
           item.disabled = !signedIn;
         });
+        elements.caseDeleteButton.disabled = !signedIn || !getSelectedCase();
         elements.uploadMatchedButton.disabled =
           !signedIn || !state.batchQueue.some((item) => item.assetId && !item.uploaded);
       }
@@ -2104,17 +2320,89 @@
         elements.assetCountyFilter.disabled = config.key === "project";
       }
 
+      function isAssetCurrentlyBorrowed(asset) {
+        const isBorrowed = /借出/.test(asset.status || "");
+        const hasLoanState = [asset.currentBorrower, asset.currentBorrowUnit, asset.lastLoanAt].some((value) =>
+          Boolean(normalizeText(value)),
+        );
+        return isBorrowed && hasLoanState;
+      }
+
       function renderMetrics() {
         const recycleAssets = getDecoratedAssets("recycle");
         const projectAssets = getDecoratedAssets("project");
         const allAssets = [...recycleAssets, ...projectAssets];
+        const activeLoanCount = projectAssets.filter((asset) => isAssetCurrentlyBorrowed(asset)).length;
         elements.metricTotalAssets.textContent = `${recycleAssets.length}`;
         elements.metricPhotoAssets.textContent = `${projectAssets.length}`;
-        elements.metricLoanedAssets.textContent = `${projectAssets.filter((asset) => /借出/.test(asset.status || "")).length}`;
+        elements.metricLoanedAssets.textContent = `${activeLoanCount}`;
         const latest = allAssets
           .filter((asset) => asset.lastInventoryAt)
           .sort((a, b) => `${b.lastInventoryAt}`.localeCompare(`${a.lastInventoryAt}`))[0];
         elements.metricLastInventory.textContent = latest ? formatDateLabel(latest.lastInventoryAt) : "尚無";
+      }
+
+      function renderDashboardRecycleSummary() {
+        const assets = getDecoratedAssets("recycle");
+        if (assets.length === 0) {
+          elements.dashboardRecycleSummary.innerHTML = '<div class="empty-state">同步回收輔具後，這裡會顯示回收摘要。</div>';
+          return;
+        }
+        const countyCount = new Set(assets.map((asset) => asset.county).filter(Boolean)).size;
+        const activeCount = assets.filter((asset) =>
+          /借出|使用中|移撥/.test(`${asset.status || ""} ${asset.reuseRecord || ""} ${asset.location || ""}`),
+        ).length;
+        const scrapCount = assets.filter((asset) =>
+          /報廢/.test(`${asset.category || ""} ${asset.status || ""} ${asset.remarks || ""}`),
+        ).length;
+        const inStockCount = Math.max(0, assets.length - activeCount);
+        elements.dashboardRecycleSummary.innerHTML = `
+          <article class="preview-card">
+            <h4>回收輔具總數</h4>
+            <p>${assets.length} 筆 / ${countyCount} 個縣市</p>
+          </article>
+          <article class="preview-card">
+            <h4>在庫保存中</h4>
+            <p>${inStockCount} 筆</p>
+          </article>
+          <article class="preview-card">
+            <h4>使用 / 移撥中</h4>
+            <p>${activeCount} 筆</p>
+          </article>
+          <article class="preview-card">
+            <h4>報廢 / 特殊列管</h4>
+            <p>${scrapCount} 筆</p>
+          </article>
+        `;
+      }
+
+      function renderDashboardProjectSummary() {
+        const assets = getDecoratedAssets("project");
+        if (assets.length === 0) {
+          elements.dashboardProjectSummary.innerHTML = '<div class="empty-state">同步單位 / 工具資料後，這裡會顯示單位摘要。</div>';
+          return;
+        }
+        const borrowedCount = assets.filter((asset) => isAssetCurrentlyBorrowed(asset)).length;
+        const availableCount = Math.max(0, assets.length - borrowedCount);
+        const categoryCount = new Set(assets.map((asset) => asset.category).filter(Boolean)).size;
+        elements.dashboardProjectSummary.innerHTML = `
+          <article class="preview-card">
+            <h4>單位 / 工具總數</h4>
+            <p>${assets.length} 筆</p>
+          </article>
+          <article class="preview-card">
+            <h4>在庫 / 可用</h4>
+            <p>${availableCount} 筆</p>
+          </article>
+          <article class="preview-card">
+            <h4>借出中</h4>
+            <p>${borrowedCount} 筆</p>
+          </article>
+          <article class="preview-card">
+            <h4>類別數</h4>
+            <p>${categoryCount} 類 / 借還紀錄 ${state.loans.length} 筆</p>
+          </article>
+        `;
       }
 
       function renderAssetImportPreview(container, records, sheets, options) {
@@ -2368,22 +2656,20 @@
       }
 
       function renderInventoryFeed() {
-        const assets = getAllDecoratedAssets()
-          .filter((asset) => asset.lastInventoryAt || asset.primaryPhoto)
-          .sort((a, b) =>
-            `${b.lastInventoryAt || b.updatedAt}`.localeCompare(`${a.lastInventoryAt || a.updatedAt}`),
-          )
+        const recentLoans = [...state.loans]
+          .sort((a, b) => `${b.date || b.createdAt || ""}`.localeCompare(`${a.date || a.createdAt || ""}`))
           .slice(0, 6);
-        if (assets.length === 0) {
-          elements.inventoryFeed.innerHTML = '<div class="empty-state">上傳照片後，這裡會顯示最近盤點動態。</div>';
+        if (recentLoans.length === 0) {
+          elements.inventoryFeed.innerHTML = '<div class="empty-state">同步單位 / 工具後，這裡會顯示最近借還狀況。</div>';
           return;
         }
-        elements.inventoryFeed.innerHTML = assets
+        elements.inventoryFeed.innerHTML = recentLoans
           .map(
-            (asset) => `
+            (entry) => `
               <article class="timeline-item">
-                <strong>${asset.code}｜${asset.name}</strong>
-                <p>${getAssetDatasetConfig(asset.assetKind).label} / ${formatDateLabel(asset.lastInventoryAt || asset.updatedAt)} / 照片 ${asset.photos.length} 張</p>
+                <strong>${entry.assetCode || "-"}｜${entry.assetName || "未填名稱"}</strong>
+                <p>${entry.action === "borrow" ? "借出" : "歸還"} / ${formatDateLabel(entry.date || entry.createdAt)}</p>
+                <p>${[entry.person, entry.unit].filter(Boolean).join(" / ") || "未填借用人或單位"}</p>
               </article>
             `,
           )
@@ -2636,6 +2922,113 @@
           .join("");
       }
 
+      function getSelectedCase() {
+        return getAvailableCases().find((entry) => entry.id === state.selectedCaseId) || null;
+      }
+
+      function resetCaseForm() {
+        elements.caseForm.reset();
+        elements.caseId.value = "";
+        state.selectedCaseId = "";
+        elements.caseFormTitle.textContent = "新增 / 編輯對象";
+        elements.caseDeleteButton.disabled = true;
+      }
+
+      function fillCaseForm(entry) {
+        state.selectedCaseId = entry.id || "";
+        elements.caseFormTitle.textContent = `編輯 ${entry.caseCode || entry.name || "對象資料"}`;
+        elements.caseId.value = entry.id || "";
+        elements.caseCode.value = entry.caseCode || "";
+        elements.caseName.value = entry.name || "";
+        elements.caseDisplayItem.value = entry.displayItem || "";
+        elements.caseDisabilityCategory.value = entry.disabilityCategory || "";
+        elements.caseVisitDate.value = entry.visitDate || "";
+        elements.caseVisitStaff.value = entry.visitStaff || "";
+        elements.caseDeleteButton.disabled = !state.user;
+      }
+
+      function renderCaseSearchState() {
+        const label = CASE_SEARCH_LABELS[state.caseSearchField] || "編號";
+        elements.caseSearchButtons.forEach((button) => {
+          button.classList.toggle("active", button.dataset.caseSearchField === state.caseSearchField);
+        });
+        elements.caseSearchInput.placeholder = `搜尋${label}`;
+      }
+
+      function openCaseModal(entry = null) {
+        if (entry) {
+          fillCaseForm(entry);
+        } else {
+          resetCaseForm();
+        }
+        if (!elements.caseModal.open) {
+          elements.caseModal.showModal();
+        }
+      }
+
+      function closeCaseModal() {
+        if (elements.caseModal.open) {
+          elements.caseModal.close();
+        }
+      }
+
+      function getLoanActionMeta(action = "borrow") {
+        const normalizedAction = action === "return" ? "return" : "borrow";
+        if (normalizedAction === "return") {
+          return {
+            value: "return",
+            title: "歸還設備",
+            badge: "歸還模式",
+            label: "歸還",
+            submit: "確認歸還",
+          };
+        }
+        return {
+          value: "borrow",
+          title: "借用設備",
+          badge: "借用模式",
+          label: "借出",
+          submit: "確認借用",
+        };
+      }
+
+      function syncLoanDialogState(action = state.loanMode) {
+        const meta = getLoanActionMeta(action);
+        state.loanMode = meta.value;
+        elements.loanAction.value = meta.value;
+        elements.loanModalTitle.textContent = meta.title;
+        elements.loanModePill.textContent = meta.badge;
+        elements.loanActionDisplay.textContent = meta.label;
+        elements.loanSubmitButton.textContent = meta.submit;
+      }
+
+      function openLoanModal(action = state.loanMode) {
+        if (!state.user) return;
+        const nextMode = getLoanActionMeta(action).value;
+        if (nextMode !== state.loanMode) {
+          state.loanMode = nextMode;
+          elements.loanUnit.value = "";
+          elements.loanDate.valueAsDate = new Date();
+          resetLoanWorkflow();
+        }
+        syncLoanIdentity();
+        if (!elements.loanDate.value) {
+          elements.loanDate.valueAsDate = new Date();
+        }
+        syncLoanDialogState(nextMode);
+        renderLoanCaseOptions();
+        renderLoanAssetQueue();
+        if (!elements.loanModal.open) {
+          elements.loanModal.showModal();
+        }
+      }
+
+      function closeLoanModal() {
+        if (elements.loanModal.open) {
+          elements.loanModal.close();
+        }
+      }
+
       function syncLoanIdentity() {
         if (!state.user) {
           elements.loanPerson.readOnly = false;
@@ -2649,7 +3042,7 @@
         const availableCases = getAvailableCases();
         const searchValue = normalizeText(elements.loanCaseSearch.value).toLowerCase();
         const visibleCases = availableCases.filter((entry) => {
-          const haystack = [entry.caseCode, entry.name, entry.unit, entry.category]
+          const haystack = [entry.caseCode, entry.name, entry.displayItem, entry.disabilityCategory, entry.visitStaff]
             .map((value) => normalizeText(value).toLowerCase())
             .join(" ");
           return !searchValue || haystack.includes(searchValue);
@@ -2674,9 +3067,9 @@
                 <input type="checkbox" data-case-id="${entry.id}" ${state.selectedLoanCaseIds.includes(entry.id) ? "checked" : ""} />
                 <div>
                   <strong>${entry.caseCode || "未填編號"}｜${entry.name || "未填姓名"}</strong>
-                  <small>${[entry.unit, entry.category, entry.year].filter(Boolean).join(" / ") || "未補齊個案資訊"}</small>
+                  <small>${[entry.displayItem, entry.disabilityCategory, entry.visitDate, entry.visitStaff].filter(Boolean).join(" / ") || "未補齊個案資訊"}</small>
                 </div>
-                <span class="chip">${entry.category || "個案"}</span>
+                <span class="chip">${entry.displayItem || "個案"}</span>
               </label>
             `,
           )
@@ -2732,13 +3125,14 @@
       function renderCasePreview() {
         if (state.importedCases.length === 0) {
           elements.casePreview.className = "stack-list empty-state";
-          elements.casePreview.textContent = "尚未匯入個案 Excel。";
+          elements.casePreview.textContent = "尚未匯入個案 Excel，平常可直接用上方新增對象。";
           return;
         }
         elements.casePreview.className = "stack-list";
         elements.casePreview.innerHTML = `
           <article class="preview-card">
             <h4>已整理並同步 ${state.importedCases.length} 筆個案資料</h4>
+            <p>最近一次匯入已完成，可直接在清單中搜尋或編輯。</p>
             <div class="preview-chip-row">
               ${state.importedCaseSheets
                 .filter((sheet) => !sheet.skipped)
@@ -2746,39 +3140,39 @@
                 .join("")}
             </div>
           </article>
-          ${state.importedCases
-            .slice(0, 5)
-            .map(
-              (entry) => `
-                <article class="preview-card">
-                  <h4>${entry.caseCode || "未填編號"}｜${entry.name || "未填姓名"}</h4>
-                  <p>${[entry.year, entry.category, entry.unit].filter(Boolean).join(" / ") || "尚未辨識主要欄位"}</p>
-                </article>
-              `,
-            )
-            .join("")}
         `;
       }
 
       function renderCaseTable() {
         const availableCases = getAvailableCases();
+        const searchValue = normalizeText(elements.caseSearchInput.value).toLowerCase();
+        const filteredCases = availableCases.filter((entry) => {
+          if (!searchValue) return true;
+          return normalizeText(entry[state.caseSearchField]).toLowerCase().includes(searchValue);
+        });
         if (availableCases.length === 0) {
-          elements.caseTableBody.innerHTML = '<tr><td colspan="6" class="muted-cell">尚未載入個案資料。</td></tr>';
+          elements.caseTableBody.innerHTML = '<tr><td colspan="7" class="muted-cell">尚未載入個案資料。</td></tr>';
           return;
         }
-        elements.caseTableBody.innerHTML = availableCases
+        if (filteredCases.length === 0) {
+          elements.caseTableBody.innerHTML = '<tr><td colspan="7" class="muted-cell">找不到符合條件的對象。</td></tr>';
+          return;
+        }
+        elements.caseTableBody.innerHTML = filteredCases
           .map(
             (entry) => `
               <tr>
                 <td>${entry.caseCode || "-"}</td>
-                <td>${entry.year || "-"}</td>
-                <td>${entry.category || "-"}</td>
                 <td>${entry.name || "-"}</td>
-                <td>${entry.unit || "-"}</td>
-                <td>${truncateText(
-                  [entry.disabilityType, entry.gender, entry.age, entry.injuryType].filter(Boolean).join(" / ") || "-",
-                  42,
-                )}</td>
+                <td>${truncateText(entry.displayItem || "-", 24)}</td>
+                <td>${entry.disabilityCategory || "-"}</td>
+                <td>${entry.visitDate || "-"}</td>
+                <td>${entry.visitStaff || "-"}</td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" data-action="edit-case" data-id="${entry.id}">編輯</button>
+                  </div>
+                </td>
               </tr>
             `,
           )
@@ -2868,15 +3262,19 @@
         renderAssetDatasetState();
         renderMetrics();
         renderImportPreviews();
+        renderDashboardRecycleSummary();
+        renderDashboardProjectSummary();
         renderRecycleWorkspace();
         renderCountySummary();
         renderInventoryFeed();
         populateFilterOptions();
         renderAssetTable();
         syncLoanIdentity();
+        syncLoanDialogState(state.loanMode);
         renderLoanCaseOptions();
         renderLoanAssetQueue();
         renderLoanTable();
+        renderCaseSearchState();
         renderCasePreview();
         renderCaseTable();
         renderSingleInventoryResult();
@@ -2887,6 +3285,12 @@
           fillAssetForm(selectedAsset);
         } else {
           resetAssetForm();
+        }
+        const selectedCase = getSelectedCase();
+        if (selectedCase) {
+          fillCaseForm(selectedCase);
+        } else {
+          resetCaseForm();
         }
       }
 
@@ -3218,33 +3622,23 @@
 
       function normalizeCaseEntry(entry = {}, index = 0) {
         const caseCode = normalizeText(entry.caseCode || entry.code || "");
-        const name = normalizeText(entry.name || entry.personName || "");
-        const unit = normalizeText(entry.unit || entry.org || "");
-        const year = normalizeText(entry.year || "");
-        const category = normalizeText(entry.category || "");
-        const disabilityType = normalizeText(entry.disabilityType || "");
-        const ageGroup = normalizeText(entry.ageGroup || "");
-        const workType = normalizeText(entry.workType || "");
-        const gender = normalizeText(entry.gender || "");
-        const age = normalizeText(entry.age || "");
-        const injuryType = normalizeText(entry.injuryType || "");
-        const fallbackCode = caseCode || name || unit || `對象-${index + 1}`;
+        const name = normalizeText(entry.name || entry.personName || entry.caseName || "");
+        const displayItem = normalizeText(entry.displayItem || entry.unit || entry.category || "");
+        const disabilityCategory = normalizeText(entry.disabilityCategory || entry.disabilityType || entry.injuryType || "");
+        const visitDate = normalizeText(entry.visitDate || entry.year || "");
+        const visitStaff = normalizeText(entry.visitStaff || entry.workType || "");
+        const fallbackCode = caseCode || name || displayItem || `對象-${index + 1}`;
         return {
           ...entry,
           id:
             normalizeText(entry.id) ||
-            createStableId("case", `${fallbackCode}|${name}|${unit}|${year}|${category}|${index}`),
+            createStableId("case", `${fallbackCode}|${name}|${displayItem}|${visitDate}|${visitStaff}|${index}`),
           caseCode: caseCode || fallbackCode,
           name,
-          unit,
-          year,
-          category,
-          disabilityType,
-          ageGroup,
-          workType,
-          gender,
-          age,
-          injuryType,
+          displayItem,
+          disabilityCategory,
+          visitDate,
+          visitStaff,
           rawFields: entry.rawFields && typeof entry.rawFields === "object" ? entry.rawFields : {},
           createdAt: entry.createdAt || new Date().toISOString(),
         };
@@ -3256,9 +3650,9 @@
           const seed = {
             caseCode: normalizeText(entry?.caseCode || entry?.code || ""),
             name: normalizeText(entry?.name || entry?.personName || ""),
-            unit: normalizeText(entry?.unit || entry?.org || ""),
+            displayItem: normalizeText(entry?.displayItem || entry?.unit || entry?.category || ""),
           };
-          if (![seed.caseCode, seed.name, seed.unit].some(Boolean)) return;
+          if (![seed.caseCode, seed.name, seed.displayItem].some(Boolean)) return;
           const normalized = normalizeCaseEntry(entry, index);
           cases.set(normalized.id, normalized);
         });
@@ -3333,23 +3727,18 @@
               findCaseValue(raw, ["編號", "案號", "編號/案號", "案件編號", "個案編號", "人員編號", "員工編號"]) ||
               `${sheetName}-${rowIndex + 1}`;
             const name = findCaseValue(raw, ["姓名", "個案姓名", "名稱", "服務對象", "對象姓名"]);
-            const unit = findCaseValue(raw, ["單位", "服務單位", "所屬單位", "部門", "服務處"]);
-            if (![caseCode, name, unit].some(Boolean)) continue;
+            const displayItem = findCaseValue(raw, ["顯示項目", "服務項目", "項目", "顯示內容", "單位", "類別"]);
+            if (![caseCode, name, displayItem].some(Boolean)) continue;
             records.push(
               normalizeCaseEntry(
                 {
-                  id: createStableId("case", `${file.name}|${sheetName}|${rowIndex + 1}|${caseCode}|${name}|${unit}`),
+                  id: createStableId("case", `${file.name}|${sheetName}|${rowIndex + 1}|${caseCode}|${name}|${displayItem}`),
                   caseCode,
-                  year: findCaseValue(raw, ["年度", "申請年度", "年別"]),
-                  category: findCaseValue(raw, ["類別", "補助類別", "案類", "身份別", "對象類別"]),
-                  disabilityType: findCaseValue(raw, ["身障", "障別", "障礙類別"]),
-                  ageGroup: findCaseValue(raw, ["中高齡", "身障/中高齡", "年齡層"]),
-                  workType: findCaseValue(raw, ["勞", "就業型態", "ECFA", "工作型態"]),
-                  unit,
                   name,
-                  gender: findCaseValue(raw, ["性別"]),
-                  age: findCaseValue(raw, ["年齡"]),
-                  injuryType: findCaseValue(raw, ["傷殘類別", "障礙類別", "傷病類別"]),
+                  displayItem,
+                  disabilityCategory: findCaseValue(raw, ["障礙類別", "障別", "身障", "傷殘類別", "障礙別"]),
+                  visitDate: findCaseValue(raw, ["訪視日期", "日期", "訪視日"]),
+                  visitStaff: findCaseValue(raw, ["訪視人員", "服務人員", "訪員", "訪視者"]),
                   rawFields: raw,
                   createdAt: new Date().toISOString(),
                 },
@@ -3580,6 +3969,7 @@
         renderLoanCaseOptions();
         renderLoanAssetQueue();
         syncLoanIdentity();
+        syncLoanDialogState(state.loanMode);
       }
 
       async function handleLoanQrPhotos(event) {
@@ -3760,9 +4150,68 @@
           resetLoanWorkflow();
           updateSyncBadge(`借還紀錄已寫入 Firebase，共 ${processedCount} 件`, "success");
           await refreshRemoteData();
+          closeLoanModal();
         } catch (error) {
           console.error(error);
           updateSyncBadge("借還紀錄儲存失敗", "error");
+        }
+      }
+
+      async function handleCaseSubmit(event) {
+        event.preventDefault();
+        if (!state.user) return;
+        const existing = getSelectedCase();
+        const record = normalizeCaseEntry(
+          {
+            id:
+              elements.caseId.value ||
+              createStableId(
+                "case-manual",
+                `${elements.caseCode.value}|${elements.caseName.value}|${elements.caseDisplayItem.value}|${elements.caseVisitDate.value}|${elements.caseVisitStaff.value}`,
+              ),
+            caseCode: normalizeText(elements.caseCode.value),
+            name: normalizeText(elements.caseName.value),
+            displayItem: normalizeText(elements.caseDisplayItem.value),
+            disabilityCategory: normalizeText(elements.caseDisabilityCategory.value),
+            visitDate: normalizeText(elements.caseVisitDate.value),
+            visitStaff: normalizeText(elements.caseVisitStaff.value),
+            rawFields: existing?.rawFields || {},
+            createdAt: existing?.createdAt || new Date().toISOString(),
+          },
+          0,
+        );
+        if (![record.caseCode, record.name].some(Boolean)) {
+          updateSyncBadge("請至少填寫編號或個案姓名", "warn");
+          return;
+        }
+        updateSyncBadge("儲存對象資料中...", "loading");
+        try {
+          await upsertCaseRecords([record]);
+          state.selectedCaseId = record.id;
+          updateSyncBadge("對象資料已儲存到 Firebase", "success");
+          await refreshRemoteData();
+          closeCaseModal();
+        } catch (error) {
+          console.error(error);
+          updateSyncBadge("對象資料儲存失敗", "error");
+        }
+      }
+
+      async function handleCaseDelete() {
+        const entry = getSelectedCase();
+        if (!entry || !state.user) return;
+        if (!window.confirm(`確定要刪除 ${entry.caseCode || entry.name || "這筆對象資料"} 嗎？`)) return;
+        updateSyncBadge("刪除對象資料中...", "loading");
+        try {
+          await deleteCaseRecord(entry.id);
+          state.selectedCaseId = "";
+          state.selectedLoanCaseIds = state.selectedLoanCaseIds.filter((id) => id !== entry.id);
+          updateSyncBadge("對象資料已刪除", "success");
+          await refreshRemoteData();
+          closeCaseModal();
+        } catch (error) {
+          console.error(error);
+          updateSyncBadge("刪除對象資料失敗", "error");
         }
       }
 
@@ -3955,6 +4404,19 @@
             renderAll();
           }
         });
+        elements.loanBorrowButton.addEventListener("click", () => openLoanModal("borrow"));
+        elements.loanReturnButton.addEventListener("click", () => openLoanModal("return"));
+        elements.loanResetButton.addEventListener("click", () => {
+          elements.loanUnit.value = "";
+          elements.loanDate.valueAsDate = new Date();
+          resetLoanWorkflow();
+        });
+        elements.loanModalClose.addEventListener("click", closeLoanModal);
+        elements.loanModal.addEventListener("click", (event) => {
+          if (event.target === elements.loanModal) {
+            closeLoanModal();
+          }
+        });
         elements.loanCaseSearch.addEventListener("input", renderLoanCaseOptions);
         elements.loanCaseOptions.addEventListener("change", (event) => {
           const checkbox = event.target.closest("input[type='checkbox'][data-case-id]");
@@ -3988,7 +4450,31 @@
           renderLoanAssetQueue();
         });
         elements.loanForm.addEventListener("submit", handleLoanSubmit);
+        elements.caseForm.addEventListener("submit", handleCaseSubmit);
+        elements.caseResetButton.addEventListener("click", resetCaseForm);
+        elements.caseNewButton.addEventListener("click", () => openCaseModal());
+        elements.caseDeleteButton.addEventListener("click", handleCaseDelete);
         elements.caseImportInput.addEventListener("change", handleCaseImport);
+        elements.caseSearchInput.addEventListener("input", renderCaseTable);
+        elements.caseSearchButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            state.caseSearchField = button.dataset.caseSearchField || "caseCode";
+            renderCaseSearchState();
+            renderCaseTable();
+          });
+        });
+        elements.caseTableBody.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-action='edit-case']");
+          if (!button) return;
+          state.selectedCaseId = button.dataset.id;
+          openCaseModal(getSelectedCase());
+        });
+        elements.caseModalClose.addEventListener("click", closeCaseModal);
+        elements.caseModal.addEventListener("click", (event) => {
+          if (event.target === elements.caseModal) {
+            closeCaseModal();
+          }
+        });
         elements.photoModalClose.addEventListener("click", closePhotoModal);
         elements.photoModal.addEventListener("click", (event) => {
           if (event.target === elements.photoModal) {
