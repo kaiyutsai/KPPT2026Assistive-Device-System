@@ -729,7 +729,8 @@
 
         <nav class="nav-stack">
           <button class="nav-btn active" data-view-target="dashboard">總覽 / 匯入</button>
-          <button class="nav-btn" data-view-target="assets">輔具清冊</button>
+          <button class="nav-btn" data-view-target="recycle" data-asset-kind="recycle">回收輔具管理</button>
+          <button class="nav-btn" data-view-target="assets" data-asset-kind="project">單位 / 工具清冊</button>
           <button class="nav-btn" data-view-target="inventory">盤點拍照</button>
           <button class="nav-btn" data-view-target="loans">借用 / 歸還</button>
           <button class="nav-btn" data-view-target="cases">個案匯入</button>
@@ -792,32 +793,12 @@
 
               <div class="section-head">
                 <div>
-                  <p class="eyebrow">資料匯入</p>
-                  <h3>兩份 Excel 分開匯入，資料分開同步、照片分開管理</h3>
+                  <p class="eyebrow">單位 / 工具匯入</p>
+                  <h3>職再、評估、維修工具與耗材可在這裡匯入</h3>
                 </div>
               </div>
 
               <div class="stack-list">
-                <article class="preview-card">
-                  <div class="section-head">
-                    <div>
-                      <p class="eyebrow">回收輔具清單</p>
-                      <h3>`115年1月高屏澎東區回收輔具清冊.xls`</h3>
-                    </div>
-                    <label class="file-btn">
-                      <input id="recycle-import-input" type="file" accept=".xls,.xlsx" />
-                      匯入回收輔具 Excel
-                    </label>
-                  </div>
-                  <div class="import-callout">
-                    <p>依回收清冊表頭解析，寫入 Firebase 的 `recycleAssets` 集合。</p>
-                    <button id="sync-recycle-assets-btn" class="primary-btn" disabled data-requires-auth>
-                      同步回收輔具到 Firebase
-                    </button>
-                  </div>
-                  <div id="recycle-import-preview" class="stack-list empty-state">尚未匯入回收輔具 Excel。</div>
-                </article>
-
                 <article class="preview-card">
                   <div class="section-head">
                     <div>
@@ -849,6 +830,68 @@
               </div>
               <div id="county-summary" class="summary-grid"></div>
               <div id="inventory-feed" class="timeline"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" data-view="recycle">
+          <div class="split-layout">
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">回收輔具管理</p>
+                  <h3>獨立匯入、報表整理、後續新增與 Excel 匯出</h3>
+                </div>
+                <div class="toolbar">
+                  <button id="recycle-open-assets-btn" class="ghost-btn">查看回收清冊</button>
+                  <button id="recycle-new-asset-btn" class="ghost-btn" data-requires-auth>新增回收輔具</button>
+                  <button id="download-recycle-excel-btn" class="primary-btn">下載回收 Excel</button>
+                </div>
+              </div>
+
+              <div class="stack-list">
+                <article class="preview-card">
+                  <div class="section-head">
+                    <div>
+                      <p class="eyebrow">獨立匯入窗口</p>
+                      <h3>`115年1月高屏澎東區回收輔具清冊.xls`</h3>
+                    </div>
+                    <label class="file-btn">
+                      <input id="recycle-import-input" type="file" accept=".xls,.xlsx" />
+                      匯入回收輔具 Excel
+                    </label>
+                  </div>
+                  <div class="import-callout">
+                    <p>回收輔具會獨立寫入 `recycleAssets`，方便後續做清冊、統計與報表。</p>
+                    <button id="sync-recycle-assets-btn" class="primary-btn" disabled data-requires-auth>
+                      同步回收輔具到 Firebase
+                    </button>
+                  </div>
+                  <div id="recycle-import-preview" class="stack-list empty-state">尚未匯入回收輔具 Excel。</div>
+                </article>
+
+                <article class="preview-card">
+                  <h4>回收報表格式</h4>
+                  <p>下載的 Excel 會依照你提供的回收輔具 PDF 清冊欄位順序整理，並保留縣市分段與報廢 / 中高齡等分頁。</p>
+                  <div class="preview-chip-row">
+                    <span class="chip">獨立選單</span>
+                    <span class="chip">獨立匯入</span>
+                    <span class="chip">頁面新增</span>
+                    <span class="chip">Excel 匯出</span>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">回收摘要</p>
+                  <h3>庫存、縣市與最近資料</h3>
+                </div>
+              </div>
+              <div id="recycle-summary-grid" class="stack-list"></div>
+              <div id="recycle-quick-list" class="stack-list empty-state">同步回收輔具後，這裡會顯示摘要與最近清單。</div>
             </section>
           </div>
         </section>
@@ -922,6 +965,18 @@
                 <label class="span-2">
                   品牌 / 型號
                   <input id="asset-brand-model" class="field" type="text" placeholder="可輸入品牌、型號或尺寸" />
+                </label>
+                <label class="span-2">
+                  輔具來源 / 申請年度
+                  <textarea id="asset-source-info" class="field" rows="2" placeholder="回收自哪個年度個案、回收日期或購置來源"></textarea>
+                </label>
+                <label class="span-2">
+                  維修紀錄
+                  <textarea id="asset-maintenance-record" class="field" rows="2" placeholder="維修內容、日期或保養紀錄"></textarea>
+                </label>
+                <label class="span-2">
+                  再利用紀錄 / 回收時間
+                  <textarea id="asset-reuse-record" class="field" rows="3" placeholder="移撥、借用、歸還、回收等歷程"></textarea>
                 </label>
                 <label class="span-2">說明 <textarea id="asset-description" class="field" rows="3"></textarea></label>
                 <label class="span-2">備註 <textarea id="asset-remarks" class="field" rows="3"></textarea></label>
@@ -1227,7 +1282,8 @@
 
       const viewTitles = {
         dashboard: "總覽 / 匯入",
-        assets: "輔具清冊",
+        recycle: "回收輔具管理",
+        assets: "單位 / 工具清冊",
         inventory: "盤點拍照",
         loans: "借用 / 歸還",
         cases: "個案匯入",
@@ -1264,6 +1320,11 @@
         recycleImportInput: document.querySelector("#recycle-import-input"),
         syncRecycleAssetsButton: document.querySelector("#sync-recycle-assets-btn"),
         recycleImportPreview: document.querySelector("#recycle-import-preview"),
+        recycleOpenAssetsButton: document.querySelector("#recycle-open-assets-btn"),
+        recycleNewAssetButton: document.querySelector("#recycle-new-asset-btn"),
+        downloadRecycleExcelButton: document.querySelector("#download-recycle-excel-btn"),
+        recycleSummaryGrid: document.querySelector("#recycle-summary-grid"),
+        recycleQuickList: document.querySelector("#recycle-quick-list"),
         projectImportInput: document.querySelector("#project-import-input"),
         syncProjectAssetsButton: document.querySelector("#sync-project-assets-btn"),
         projectImportPreview: document.querySelector("#project-import-preview"),
@@ -1288,6 +1349,9 @@
         assetLocation: document.querySelector("#asset-location"),
         assetPhotoUrl: document.querySelector("#asset-photo-url"),
         assetBrandModel: document.querySelector("#asset-brand-model"),
+        assetSourceInfo: document.querySelector("#asset-source-info"),
+        assetMaintenanceRecord: document.querySelector("#asset-maintenance-record"),
+        assetReuseRecord: document.querySelector("#asset-reuse-record"),
         assetDescription: document.querySelector("#asset-description"),
         assetRemarks: document.querySelector("#asset-remarks"),
         assetPhotoStrip: document.querySelector("#asset-photo-strip"),
@@ -2147,6 +2211,174 @@
         );
       }
 
+      function renderRecycleWorkspace() {
+        const assets = getDecoratedAssets("recycle");
+        if (assets.length === 0) {
+          elements.recycleSummaryGrid.className = "stack-list empty-state";
+          elements.recycleSummaryGrid.textContent = "同步回收輔具後，這裡會顯示摘要統計。";
+          elements.recycleQuickList.className = "stack-list empty-state";
+          elements.recycleQuickList.textContent = "同步回收輔具後，這裡會顯示最近資料。";
+          return;
+        }
+
+        const countyCount = new Set(assets.map((asset) => asset.county).filter(Boolean)).size;
+        const activeCount = assets.filter((asset) =>
+          /借出|使用中|移撥/.test(`${asset.status || ""} ${asset.reuseRecord || ""} ${asset.location || ""}`),
+        ).length;
+        const scrapCount = assets.filter((asset) =>
+          /報廢/.test(`${asset.category || ""} ${asset.status || ""} ${asset.remarks || ""}`),
+        ).length;
+        const inStockCount = Math.max(0, assets.length - activeCount);
+
+        elements.recycleSummaryGrid.className = "stack-list";
+        elements.recycleSummaryGrid.innerHTML = `
+          <article class="preview-card">
+            <h4>回收輔具總數</h4>
+            <p>${assets.length} 筆 / ${countyCount} 個縣市</p>
+          </article>
+          <article class="preview-card">
+            <h4>在庫保存中</h4>
+            <p>${inStockCount} 筆</p>
+          </article>
+          <article class="preview-card">
+            <h4>使用 / 移撥中</h4>
+            <p>${activeCount} 筆</p>
+          </article>
+          <article class="preview-card">
+            <h4>報廢 / 特殊列管</h4>
+            <p>${scrapCount} 筆</p>
+          </article>
+        `;
+
+        const recentAssets = [...assets]
+          .sort((a, b) => `${b.updatedAt || b.createdAt || ""}`.localeCompare(`${a.updatedAt || a.createdAt || ""}`))
+          .slice(0, 8);
+        elements.recycleQuickList.className = "stack-list";
+        elements.recycleQuickList.innerHTML = recentAssets
+          .map(
+            (asset) => `
+              <article class="preview-card">
+                <h4>${asset.code || "未填編號"}｜${asset.name || "未填名稱"}</h4>
+                <p>${[asset.county, asset.category, asset.status].filter(Boolean).join(" / ") || "尚未補齊欄位"}</p>
+                <p>${truncateText(asset.location || asset.reuseRecord || asset.remarks || "尚無位置與紀錄")}</p>
+              </article>
+            `,
+          )
+          .join("");
+      }
+
+      function openAssetWorkspace(assetKind, { reset = false } = {}) {
+        state.currentView = "assets";
+        state.assetDataset = normalizeAssetKind(assetKind);
+        if (reset) {
+          state.selectedAssetId = "";
+        }
+        state.selectedAssetKind = state.assetDataset;
+        renderAll();
+        if (reset) {
+          resetAssetForm();
+        }
+      }
+
+      function getRecyclePhotoCell(asset) {
+        const photos = getPhotoEntries(asset);
+        if (photos.length === 0) return "";
+        return photos
+          .map((photo) => {
+            if (photo.fileId) {
+              return `https://drive.google.com/file/d/${photo.fileId}/view`;
+            }
+            return photo.url || "";
+          })
+          .filter(Boolean)
+          .join("\n");
+      }
+
+      function buildRecycleReportRows(records, title) {
+        const rows = [
+          [title],
+          ["匯出日期", formatDateLabel(new Date().toISOString())],
+          [],
+          ["編號", "輔具名稱", "相關圖片", "廠牌型號/特殊改裝或配件", "輔具來源/申請年度", "維修紀錄", "輔具再利用紀錄與回收時間", "目前位置", "備註"],
+        ];
+        let currentCounty = "";
+        records.forEach((asset) => {
+          const county = asset.county || "未指定";
+          if (county !== currentCounty) {
+            currentCounty = county;
+            rows.push([county]);
+          }
+          rows.push([
+            asset.code || "",
+            asset.name || "",
+            getRecyclePhotoCell(asset),
+            [asset.brand, asset.model, asset.description].filter(Boolean).join("\n"),
+            asset.sourceInfo || "",
+            asset.maintenanceRecord || "",
+            asset.reuseRecord || "",
+            asset.location || "",
+            asset.remarks || "",
+          ]);
+        });
+        return rows;
+      }
+
+      function downloadRecycleExcel() {
+        const assets = getDecoratedAssets("recycle");
+        if (assets.length === 0) {
+          updateSyncBadge("目前沒有可下載的回收輔具資料", "warn");
+          return;
+        }
+
+        const sortedAssets = [...assets].sort((a, b) => {
+          const countySort = `${a.county || ""}`.localeCompare(`${b.county || ""}`, "zh-Hant");
+          if (countySort !== 0) return countySort;
+          return `${a.code || ""}`.localeCompare(`${b.code || ""}`, "zh-Hant");
+        });
+
+        const workbook = XLSX.utils.book_new();
+        const sheetGroups = [
+          { name: "回收輔具清單", filter: (asset) => !/報廢|中高齡/.test(asset.category || "") },
+          { name: "報廢", filter: (asset) => /報廢/.test(asset.category || "") },
+          { name: "中高齡清單", filter: (asset) => /中高齡/.test(asset.category || "") },
+        ];
+
+        sheetGroups.forEach((group) => {
+          const records = sortedAssets.filter(group.filter);
+          if (records.length === 0) return;
+          const sheet = XLSX.utils.aoa_to_sheet(
+            buildRecycleReportRows(records, `高屏澎東區回收輔具清冊-${group.name}`),
+          );
+          sheet["!cols"] = [
+            { wch: 14 },
+            { wch: 24 },
+            { wch: 24 },
+            { wch: 34 },
+            { wch: 24 },
+            { wch: 18 },
+            { wch: 28 },
+            { wch: 24 },
+            { wch: 20 },
+          ];
+          sheet["!merges"] = sheet["!merges"] || [];
+          sheet["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } });
+          XLSX.utils.book_append_sheet(workbook, sheet, group.name);
+        });
+
+        const countySummary = [["縣市", "件數"]];
+        const countyMap = sortedAssets.reduce((map, asset) => {
+          const key = asset.county || "未指定";
+          map.set(key, (map.get(key) || 0) + 1);
+          return map;
+        }, new Map());
+        [...countyMap.entries()].forEach(([county, count]) => countySummary.push([county, count]));
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(countySummary), "縣市統計");
+
+        const fileStamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        XLSX.writeFile(workbook, `回收輔具清冊_${fileStamp}.xlsx`);
+        updateSyncBadge("回收輔具 Excel 已下載", "success");
+      }
+
       function renderCountySummary() {
         const assets = getDecoratedAssets("recycle");
         if (assets.length === 0) {
@@ -2427,6 +2659,9 @@
         const externalPhoto = getPhotoEntries(asset).find((photo) => photo.url && !photo.fileId);
         elements.assetPhotoUrl.value = externalPhoto?.url || "";
         elements.assetBrandModel.value = [asset.brand, asset.model].filter(Boolean).join(" / ");
+        elements.assetSourceInfo.value = asset.sourceInfo || "";
+        elements.assetMaintenanceRecord.value = asset.maintenanceRecord || "";
+        elements.assetReuseRecord.value = asset.reuseRecord || "";
         elements.assetDescription.value = asset.description || "";
         elements.assetRemarks.value = asset.remarks || "";
         renderPhotoStrip(asset);
@@ -2668,6 +2903,7 @@
         renderAssetDatasetState();
         renderMetrics();
         renderImportPreviews();
+        renderRecycleWorkspace();
         renderCountySummary();
         renderInventoryFeed();
         populateFilterOptions();
@@ -3172,6 +3408,9 @@
           location: normalizeText(elements.assetLocation.value),
           brand,
           model,
+          sourceInfo: normalizeText(elements.assetSourceInfo.value),
+          maintenanceRecord: normalizeText(elements.assetMaintenanceRecord.value),
+          reuseRecord: normalizeText(elements.assetReuseRecord.value),
           description: normalizeText(elements.assetDescription.value),
           remarks: normalizeText(elements.assetRemarks.value),
           photos: buildPhotoEntriesFromForm(elements.assetPhotoUrl.value, existing?.photos),
@@ -3482,6 +3721,13 @@
       function bindEvents() {
         elements.navButtons.forEach((button) => {
           button.addEventListener("click", () => {
+            if (button.dataset.assetKind) {
+              state.assetDataset = normalizeAssetKind(button.dataset.assetKind);
+              state.selectedAssetKind = state.assetDataset;
+            }
+            if (button.dataset.viewTarget === "assets" && button.dataset.assetKind === "project") {
+              state.selectedAssetId = state.selectedAssetKind === "project" ? state.selectedAssetId : "";
+            }
             state.currentView = button.dataset.viewTarget;
             renderAll();
           });
@@ -3512,6 +3758,9 @@
         elements.refreshButton.addEventListener("click", refreshRemoteData);
         elements.recycleImportInput.addEventListener("change", handleRecycleImport);
         elements.syncRecycleAssetsButton.addEventListener("click", handleSyncRecycleAssets);
+        elements.recycleOpenAssetsButton.addEventListener("click", () => openAssetWorkspace("recycle"));
+        elements.recycleNewAssetButton.addEventListener("click", () => openAssetWorkspace("recycle", { reset: true }));
+        elements.downloadRecycleExcelButton.addEventListener("click", downloadRecycleExcel);
         elements.projectImportInput.addEventListener("change", handleProjectImport);
         elements.syncProjectAssetsButton.addEventListener("click", handleSyncProjectAssets);
         elements.assetDatasetSwitch.addEventListener("change", () => {
