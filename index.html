@@ -241,12 +241,6 @@
         padding: 24px;
       }
 
-      .detail-surface {
-        position: sticky;
-        top: 18px;
-        align-self: start;
-      }
-
       .section-head {
         display: flex;
         align-items: flex-start;
@@ -623,6 +617,24 @@
         margin-bottom: 18px;
       }
 
+      .asset-toolbar-stack {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .asset-filter-shell {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .asset-filter-shell .toolbar {
+        margin-left: auto;
+      }
+
       .filter-tab-row {
         display: flex;
         flex-wrap: wrap;
@@ -811,7 +823,6 @@
           grid-template-columns: 1fr;
         }
 
-        .detail-surface,
         .sticky-head {
           position: static;
         }
@@ -840,6 +851,10 @@
         .loan-command-row > *,
         .dialog-mode-row > .pill {
           width: 100%;
+        }
+
+        .asset-filter-shell .toolbar {
+          margin-left: 0;
         }
       }
     </style>
@@ -938,13 +953,8 @@
               </div>
 
               <div class="stack-list">
-                <article class="preview-card upload-panel">
-                  <input id="recycle-import-input" type="file" accept=".xls,.xlsx" data-requires-auth hidden />
-                  <p class="eyebrow">回收清冊匯入</p>
-                  <h3>115年1月高屏澎東區回收輔具清冊.xls</h3>
-                  <p class="muted-note compact-note">選檔後會自動同步到 Firebase，回收清單維持獨立管理。</p>
-                  <div id="recycle-import-preview" class="stack-list empty-state">尚未匯入回收輔具 Excel。</div>
-                </article>
+                <input id="recycle-import-input" type="file" accept=".xls,.xlsx" data-requires-auth hidden />
+                <div id="recycle-import-preview" class="stack-list" hidden></div>
               </div>
             </section>
 
@@ -1002,30 +1012,33 @@
                   匯入職再清單 Excel
                 </label>
               </div>
-              <p class="muted-note compact-note">選檔後會自動同步到 Firebase。</p>
-              <div id="project-import-preview" class="stack-list empty-state">尚未匯入職再清單 Excel。</div>
+              <div id="project-import-preview" class="stack-list" hidden></div>
             </section>
 
-            <div class="section-head sticky-head">
-              <div>
-                <p class="eyebrow">資料清冊</p>
-                <h3 id="asset-view-title">職再借用清單</h3>
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">資料清冊</p>
+                  <h3 id="asset-view-title">職再借用清單</h3>
+                </div>
               </div>
-              <div class="toolbar">
+              <div class="asset-toolbar-stack">
                 <input id="asset-dataset-switch" type="hidden" value="project" />
-                <span class="pill">職再借用清單</span>
                 <input id="asset-search" class="field" type="search" placeholder="搜尋編號、名稱、品牌、備註" />
-                <select id="asset-category-filter" class="field">
+                <div class="asset-filter-shell">
+                  <div id="asset-category-tabs" class="filter-tab-row">
+                    <button type="button" class="filter-tab active" data-asset-category="">全部類別</button>
+                  </div>
+                  <div class="toolbar">
+                    <button id="download-word-btn" class="ghost-btn">下載 Word 清單</button>
+                    <button id="new-asset-btn" class="ghost-btn">新增項目</button>
+                  </div>
+                </div>
+                <select id="asset-category-filter" hidden>
                   <option value="">全部類別</option>
                 </select>
                 <input id="asset-county-filter" type="hidden" value="" />
-                <button id="download-word-btn" class="ghost-btn">下載 Word 清單</button>
-                <button id="new-asset-btn" class="ghost-btn">新增輔具</button>
               </div>
-            </div>
-
-            <div class="split-layout">
-              <section class="surface">
               <div class="table-wrap">
                 <table class="data-table">
                   <thead>
@@ -1045,71 +1058,7 @@
                   </tbody>
                 </table>
               </div>
-              </section>
-
-              <aside class="surface detail-surface">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">明細編修</p>
-                  <h3 id="asset-form-title">新增 / 編輯輔具</h3>
-                </div>
-              </div>
-
-              <form id="asset-form" class="form-grid">
-                <input id="asset-id" type="hidden" />
-                <label>編號 <input id="asset-code" class="field" type="text" required /></label>
-                <label>名稱 <input id="asset-name" class="field" type="text" required /></label>
-                <label>類別 <input id="asset-category" class="field" type="text" /></label>
-                <label>縣市 <input id="asset-county" class="field" type="text" /></label>
-                <label>狀態 <input id="asset-status" class="field" type="text" /></label>
-                <label>位置 <input id="asset-location" class="field" type="text" /></label>
-                <label class="span-2">
-                  外部照片網址
-                  <input id="asset-photo-url" class="field" type="url" placeholder="若已經有公開圖片網址可貼這裡" />
-                </label>
-                <label class="span-2">
-                  品牌 / 型號
-                  <input id="asset-brand-model" class="field" type="text" placeholder="可輸入品牌、型號或尺寸" />
-                </label>
-                <label class="span-2">
-                  輔具來源 / 申請年度
-                  <textarea id="asset-source-info" class="field" rows="2" placeholder="回收自哪個年度個案、回收日期或購置來源"></textarea>
-                </label>
-                <label class="span-2">
-                  維修紀錄
-                  <textarea id="asset-maintenance-record" class="field" rows="2" placeholder="維修內容、日期或保養紀錄"></textarea>
-                </label>
-                <label class="span-2">
-                  再利用紀錄 / 回收時間
-                  <textarea id="asset-reuse-record" class="field" rows="3" placeholder="移撥、借用、歸還、回收等歷程"></textarea>
-                </label>
-                <label class="span-2">說明 <textarea id="asset-description" class="field" rows="3"></textarea></label>
-                <label class="span-2">備註 <textarea id="asset-remarks" class="field" rows="3"></textarea></label>
-
-                <div class="span-2 detail-block">
-                  <div class="detail-block-head">
-                    <h4>輔具照片</h4>
-                    <span id="asset-photo-count" class="pill">0 張</span>
-                  </div>
-                  <div id="asset-photo-strip" class="photo-strip"></div>
-                </div>
-
-                <div class="span-2 detail-block">
-                  <div class="detail-block-head">
-                    <h4>QR 預覽</h4>
-                    <button id="download-qr-btn" type="button" class="ghost-btn">下載 QR</button>
-                  </div>
-                  <canvas id="asset-qr-canvas" width="220" height="220"></canvas>
-                </div>
-
-                <div class="form-actions span-2">
-                  <button type="submit" class="primary-btn" data-requires-auth>儲存輔具</button>
-                  <button id="reset-asset-form-btn" type="button" class="ghost-btn">清空表單</button>
-                  <button id="delete-asset-btn" type="button" class="ghost-btn danger" data-requires-auth>刪除此筆</button>
-                </div>
-              </form>
-              </aside>
-            </div>
+            </section>
           </div>
         </section>
 
@@ -1359,6 +1308,71 @@
       </form>
     </dialog>
 
+    <dialog id="asset-modal" class="form-modal">
+      <div class="dialog-head">
+        <div class="dialog-head-copy">
+          <p class="eyebrow">資料編修</p>
+          <h3 id="asset-form-title">新增 / 編輯輔具</h3>
+        </div>
+        <div class="toolbar">
+          <button id="asset-modal-close" type="button" class="ghost-btn">關閉</button>
+        </div>
+      </div>
+      <form id="asset-form" class="form-grid">
+        <input id="asset-id" type="hidden" />
+        <label>編號 <input id="asset-code" class="field" type="text" required /></label>
+        <label>名稱 <input id="asset-name" class="field" type="text" required /></label>
+        <label>類別 <input id="asset-category" class="field" type="text" /></label>
+        <label>縣市 <input id="asset-county" class="field" type="text" /></label>
+        <label>狀態 <input id="asset-status" class="field" type="text" /></label>
+        <label>位置 <input id="asset-location" class="field" type="text" /></label>
+        <label class="span-2">
+          外部照片網址
+          <input id="asset-photo-url" class="field" type="url" placeholder="若已經有公開圖片網址可貼這裡" />
+        </label>
+        <label class="span-2">
+          品牌 / 型號
+          <input id="asset-brand-model" class="field" type="text" placeholder="可輸入品牌、型號或尺寸" />
+        </label>
+        <label class="span-2">
+          輔具來源 / 申請年度
+          <textarea id="asset-source-info" class="field" rows="2" placeholder="回收自哪個年度個案、回收日期或購置來源"></textarea>
+        </label>
+        <label class="span-2">
+          維修紀錄
+          <textarea id="asset-maintenance-record" class="field" rows="2" placeholder="維修內容、日期或保養紀錄"></textarea>
+        </label>
+        <label class="span-2">
+          再利用紀錄 / 回收時間
+          <textarea id="asset-reuse-record" class="field" rows="3" placeholder="移撥、借用、歸還、回收等歷程"></textarea>
+        </label>
+        <label class="span-2">說明 <textarea id="asset-description" class="field" rows="3"></textarea></label>
+        <label class="span-2">備註 <textarea id="asset-remarks" class="field" rows="3"></textarea></label>
+
+        <div class="span-2 detail-block">
+          <div class="detail-block-head">
+            <h4>輔具照片</h4>
+            <span id="asset-photo-count" class="pill">0 張</span>
+          </div>
+          <div id="asset-photo-strip" class="photo-strip"></div>
+        </div>
+
+        <div class="span-2 detail-block">
+          <div class="detail-block-head">
+            <h4>QR 預覽</h4>
+            <button id="download-qr-btn" type="button" class="ghost-btn">下載 QR</button>
+          </div>
+          <canvas id="asset-qr-canvas" width="220" height="220"></canvas>
+        </div>
+
+        <div class="form-actions span-2">
+          <button type="submit" class="primary-btn" data-requires-auth>儲存輔具</button>
+          <button id="reset-asset-form-btn" type="button" class="ghost-btn">清空表單</button>
+          <button id="delete-asset-btn" type="button" class="ghost-btn danger" data-requires-auth>刪除此筆</button>
+        </div>
+      </form>
+    </dialog>
+
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
@@ -1500,11 +1514,14 @@
         assetMetaHeader: document.querySelector("#asset-meta-header"),
         assetDatasetSwitch: document.querySelector("#asset-dataset-switch"),
         assetSearch: document.querySelector("#asset-search"),
+        assetCategoryTabs: document.querySelector("#asset-category-tabs"),
         assetCategoryFilter: document.querySelector("#asset-category-filter"),
         assetCountyFilter: document.querySelector("#asset-county-filter"),
         downloadWordButton: document.querySelector("#download-word-btn"),
         newAssetButton: document.querySelector("#new-asset-btn"),
         assetTableBody: document.querySelector("#asset-table-body"),
+        assetModal: document.querySelector("#asset-modal"),
+        assetModalClose: document.querySelector("#asset-modal-close"),
         assetFormTitle: document.querySelector("#asset-form-title"),
         assetForm: document.querySelector("#asset-form"),
         assetId: document.querySelector("#asset-id"),
@@ -1772,6 +1789,7 @@
         await auth.signOut();
         closeLoanModal();
         closeCaseModal();
+        closeAssetModal();
         closePhotoModal();
         state.user = null;
         state.accessToken = "";
@@ -2337,7 +2355,7 @@
         elements.assetDatasetSwitch.value = config.key;
         elements.assetViewTitle.textContent = config.label;
         elements.assetMetaHeader.textContent = config.key === "project" ? "品牌 / 型號" : "縣市";
-        elements.newAssetButton.textContent = config.key === "project" ? "新增職再項目" : "新增回收輔具";
+        elements.newAssetButton.textContent = config.key === "project" ? "新增項目" : "新增回收輔具";
         elements.assetCountyFilter.disabled = config.key === "project";
       }
 
@@ -2428,11 +2446,13 @@
 
       function renderAssetImportPreview(container, records, sheets, options) {
         if (records.length === 0) {
-          container.className = "stack-list empty-state";
-          container.textContent = options.emptyText;
+          container.hidden = true;
+          container.className = "stack-list";
+          container.innerHTML = "";
           return;
         }
 
+        container.hidden = false;
         container.className = "stack-list";
         container.innerHTML = `
           <article class="preview-card">
@@ -2576,19 +2596,6 @@
           )
           .join("");
         hydrateDriveImages(elements.recycleTableBody);
-      }
-
-      function openAssetWorkspace(assetKind, { reset = false } = {}) {
-        state.currentView = "assets";
-        state.assetDataset = normalizeAssetKind(assetKind);
-        if (reset) {
-          state.selectedAssetId = "";
-        }
-        state.selectedAssetKind = state.assetDataset;
-        renderAll();
-        if (reset) {
-          resetAssetForm();
-        }
       }
 
       function getRecyclePhotoCell(asset) {
@@ -2739,7 +2746,9 @@
 
       function populateFilterOptions() {
         const assets = getDecoratedAssets();
-        const categories = [...new Set(assets.map((asset) => asset.category).filter(Boolean))].sort();
+        const categories = [...new Set(assets.map((asset) => asset.category).filter(Boolean))].sort((a, b) =>
+          `${a}`.localeCompare(`${b}`, "zh-Hant"),
+        );
         const counties = [...new Set(assets.map((asset) => asset.county).filter(Boolean))].sort();
         const currentCategory = elements.assetCategoryFilter.value;
         const currentCounty = elements.assetCountyFilter.value;
@@ -2749,8 +2758,31 @@
         elements.assetCountyFilter.innerHTML =
           '<option value="">全部縣市</option>' +
           counties.map((value) => `<option value="${value}">${value}</option>`).join("");
-        elements.assetCategoryFilter.value = currentCategory;
-        elements.assetCountyFilter.value = currentCounty;
+        elements.assetCategoryFilter.value = categories.includes(currentCategory) ? currentCategory : "";
+        elements.assetCountyFilter.value = counties.includes(currentCounty) ? currentCounty : "";
+        renderAssetCategoryTabs(categories);
+      }
+
+      function renderAssetCategoryTabs(categories = null) {
+        const tabOptions = categories ||
+          [...new Set(getDecoratedAssets().map((asset) => asset.category).filter(Boolean))].sort((a, b) =>
+            `${a}`.localeCompare(`${b}`, "zh-Hant"),
+          );
+        const activeCategory = elements.assetCategoryFilter.value;
+        const tabs = [{ value: "", label: "全部類別" }, ...tabOptions.map((value) => ({ value, label: value }))];
+        elements.assetCategoryTabs.innerHTML = tabs
+          .map(
+            (tab) => `
+              <button
+                type="button"
+                class="filter-tab ${tab.value === activeCategory ? "active" : ""}"
+                data-asset-category="${escapeHtml(tab.value)}"
+              >
+                ${escapeHtml(tab.label)}
+              </button>
+            `,
+          )
+          .join("");
       }
 
       function getVisibleAssets() {
@@ -2979,6 +3011,29 @@
         elements.assetRemarks.value = asset.remarks || "";
         renderPhotoStrip(asset);
         renderQrCanvas(asset);
+      }
+
+      function openAssetModal(asset = null, options = {}) {
+        const assetKind = normalizeAssetKind(options.assetKind || asset?.assetKind || state.assetDataset);
+        state.assetDataset = assetKind;
+        state.selectedAssetKind = assetKind;
+        if (asset) {
+          state.selectedAssetId = asset.id;
+          fillAssetForm(asset);
+        } else {
+          state.selectedAssetId = "";
+          resetAssetForm();
+        }
+        renderAssetDatasetState();
+        if (!elements.assetModal.open) {
+          elements.assetModal.showModal();
+        }
+      }
+
+      function closeAssetModal() {
+        if (elements.assetModal.open) {
+          elements.assetModal.close();
+        }
       }
 
       function populateAssetCodeOptions() {
@@ -3345,11 +3400,13 @@
         renderSingleInventoryResult();
         renderBatchQueue();
         populateAssetCodeOptions();
-        const selectedAsset = getSelectedAsset();
-        if (selectedAsset && selectedAsset.assetKind === state.assetDataset) {
-          fillAssetForm(selectedAsset);
-        } else {
-          resetAssetForm();
+        if (elements.assetModal.open) {
+          const selectedAsset = getSelectedAsset();
+          if (selectedAsset && selectedAsset.assetKind === state.selectedAssetKind) {
+            fillAssetForm(selectedAsset);
+          } else if (!state.selectedAssetId) {
+            resetAssetForm();
+          }
         }
         const selectedCase = getSelectedCase();
         if (selectedCase) {
@@ -3978,6 +4035,7 @@
           state.selectedAssetKind = assetKind;
           updateSyncBadge("輔具資料已儲存到 Firebase", "success");
           await refreshRemoteData();
+          closeAssetModal();
         } catch (error) {
           console.error(error);
           updateSyncBadge("儲存失敗", "error");
@@ -3995,6 +4053,7 @@
           state.selectedAssetKind = state.assetDataset;
           updateSyncBadge("輔具已刪除", "success");
           await refreshRemoteData();
+          closeAssetModal();
         } catch (error) {
           console.error(error);
           updateSyncBadge("刪除失敗", "error");
@@ -4373,7 +4432,7 @@
           if (elements.recycleImportInput.disabled) return;
           elements.recycleImportInput.click();
         });
-        elements.recycleNewAssetButton.addEventListener("click", () => openAssetWorkspace("recycle", { reset: true }));
+        elements.recycleNewAssetButton.addEventListener("click", () => openAssetModal(null, { assetKind: "recycle" }));
         elements.downloadRecycleExcelButton.addEventListener("click", downloadRecycleExcel);
         elements.recyclePageSearch.addEventListener("input", renderRecycleWorkspace);
         elements.projectImportInput.addEventListener("change", handleProjectImport);
@@ -4387,19 +4446,27 @@
           renderAll();
         });
         elements.assetSearch.addEventListener("input", renderAssetTable);
+        elements.assetCategoryTabs.addEventListener("click", (event) => {
+          const button = event.target.closest("[data-asset-category]");
+          if (!button) return;
+          elements.assetCategoryFilter.value = button.dataset.assetCategory || "";
+          renderAssetTable();
+          renderAssetCategoryTabs();
+        });
         elements.assetCategoryFilter.addEventListener("change", renderAssetTable);
         elements.assetCountyFilter.addEventListener("change", renderAssetTable);
         elements.downloadWordButton.addEventListener("click", downloadWordList);
-        elements.newAssetButton.addEventListener("click", () => {
-          state.selectedAssetId = "";
-          state.selectedAssetKind = state.assetDataset;
-          resetAssetForm();
-        });
+        elements.newAssetButton.addEventListener("click", () => openAssetModal(null, { assetKind: state.assetDataset }));
         elements.assetForm.addEventListener("submit", handleAssetSave);
         elements.resetAssetFormButton.addEventListener("click", () => {
-          state.selectedAssetId = "";
-          state.selectedAssetKind = state.assetDataset;
-          resetAssetForm();
+          const asset = getSelectedAsset();
+          if (asset) {
+            fillAssetForm(asset);
+          } else {
+            state.selectedAssetId = "";
+            state.selectedAssetKind = state.assetDataset;
+            resetAssetForm();
+          }
         });
         elements.deleteAssetButton.addEventListener("click", handleAssetDelete);
         elements.recycleTableBody.addEventListener("click", async (event) => {
@@ -4430,10 +4497,10 @@
           }
           if (!button) return;
           if (button.dataset.action === "edit-asset") {
-            state.assetDataset = normalizeAssetKind(button.dataset.kind);
-            state.selectedAssetId = button.dataset.id;
-            state.selectedAssetKind = normalizeAssetKind(button.dataset.kind);
-            renderAll();
+            const asset = findAssetById(button.dataset.id, button.dataset.kind);
+            if (asset) {
+              openAssetModal(asset);
+            }
           }
           if (button.dataset.action === "open-inventory") {
             state.currentView = "inventory";
@@ -4450,6 +4517,12 @@
           const image = event.target.closest("[data-photo-url],[data-drive-file-id]");
           if (image) {
             await openPhotoModalFromDataset(image.dataset);
+          }
+        });
+        elements.assetModalClose.addEventListener("click", closeAssetModal);
+        elements.assetModal.addEventListener("click", (event) => {
+          if (event.target === elements.assetModal) {
+            closeAssetModal();
           }
         });
         elements.downloadQrButton.addEventListener("click", () => {
