@@ -318,6 +318,11 @@
         display: none;
       }
 
+      .file-btn:has(input:disabled) {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
       .inline {
         width: fit-content;
       }
@@ -398,6 +403,15 @@
         margin: 0 0 16px;
         color: var(--muted);
         line-height: 1.7;
+      }
+
+      .compact-note {
+        margin-bottom: 14px;
+        font-size: 0.95rem;
+      }
+
+      .upload-panel {
+        padding: 20px 22px;
       }
 
       .summary-row {
@@ -735,15 +749,6 @@
           <button class="nav-btn" data-view-target="loans">借用 / 歸還</button>
           <button class="nav-btn" data-view-target="cases">個案匯入</button>
         </nav>
-
-        <div class="sidebar-note">
-<p>單檔版重點</p>
-<ul>
-<li>輔具、借還、個案會同步到 Firebase</li>
-<li>盤點照片會先壓縮，再直接上傳到 Google Drive</li>
-<li>回收輔具與職再借用清單分開管理</li>
-</ul>
-        </div>
       </aside>
 
       <main class="workspace">
@@ -783,39 +788,26 @@
         <section class="view active" data-view="dashboard">
           <div class="split-layout">
             <section class="surface">
-              <div class="config-card">
-                <strong>先確認 `FIREBASE_CONFIG` 與 `DRIVE_CONFIG.rootFolderId`</strong>
-                <p>
-                  這版會把共用資料寫入 Firebase，盤點照片則會先壓縮再上傳到同一個 Shared Drive。
-                  `DRIVE_CONFIG.rootFolderId` 請填 Shared Drive 內主資料夾的 ID。
-                </p>
-              </div>
-
               <div class="section-head">
                 <div>
-                  <p class="eyebrow">單位 / 工具匯入</p>
-                  <h3>職再、評估、維修工具與耗材可在這裡匯入</h3>
+                  <p class="eyebrow">單位 / 工具清冊</p>
+                  <h3>匯入職再、評估、維修工具與耗材</h3>
                 </div>
               </div>
 
               <div class="stack-list">
-                <article class="preview-card">
+                <article class="preview-card upload-panel">
                   <div class="section-head">
                     <div>
                       <p class="eyebrow">職再借用清單</p>
-                      <h3>`職再輔具、評估、維修工具、耗材編號清單1120210.xlsx`</h3>
+                      <h3>職再輔具、評估、維修工具、耗材編號清單1120210.xlsx</h3>
                     </div>
                     <label class="file-btn">
-                      <input id="project-import-input" type="file" accept=".xls,.xlsx" />
+                      <input id="project-import-input" type="file" accept=".xls,.xlsx" data-requires-auth />
                       匯入職再清單 Excel
                     </label>
                   </div>
-                  <div class="import-callout">
-                    <p>依職再表頭解析，寫入 Firebase 的 `projectAssets` 集合。</p>
-                    <button id="sync-project-assets-btn" class="primary-btn" disabled data-requires-auth>
-                      同步職再清單到 Firebase
-                    </button>
-                  </div>
+                  <p class="muted-note compact-note">選檔後會自動同步到 Firebase。</p>
                   <div id="project-import-preview" class="stack-list empty-state">尚未匯入職再清單 Excel。</div>
                 </article>
               </div>
@@ -840,7 +832,7 @@
               <div class="section-head">
                 <div>
                   <p class="eyebrow">回收輔具管理</p>
-                  <h3>獨立匯入、報表整理、後續新增與 Excel 匯出</h3>
+                  <h3>獨立匯入、清冊整理與回收報表</h3>
                 </div>
                 <div class="toolbar">
                   <button id="recycle-open-assets-btn" class="ghost-btn">查看回收清冊</button>
@@ -850,35 +842,19 @@
               </div>
 
               <div class="stack-list">
-                <article class="preview-card">
+                <article class="preview-card upload-panel">
                   <div class="section-head">
                     <div>
-                      <p class="eyebrow">獨立匯入窗口</p>
-                      <h3>`115年1月高屏澎東區回收輔具清冊.xls`</h3>
+                      <p class="eyebrow">回收清冊匯入</p>
+                      <h3>115年1月高屏澎東區回收輔具清冊.xls</h3>
                     </div>
                     <label class="file-btn">
-                      <input id="recycle-import-input" type="file" accept=".xls,.xlsx" />
+                      <input id="recycle-import-input" type="file" accept=".xls,.xlsx" data-requires-auth />
                       匯入回收輔具 Excel
                     </label>
                   </div>
-                  <div class="import-callout">
-                    <p>回收輔具會獨立寫入 `recycleAssets`，方便後續做清冊、統計與報表。</p>
-                    <button id="sync-recycle-assets-btn" class="primary-btn" disabled data-requires-auth>
-                      同步回收輔具到 Firebase
-                    </button>
-                  </div>
+                  <p class="muted-note compact-note">選檔後會自動同步到 Firebase，回收清單維持獨立管理。</p>
                   <div id="recycle-import-preview" class="stack-list empty-state">尚未匯入回收輔具 Excel。</div>
-                </article>
-
-                <article class="preview-card">
-                  <h4>回收報表格式</h4>
-                  <p>下載的 Excel 會依照你提供的回收輔具 PDF 清冊欄位順序整理，並保留縣市分段與報廢 / 中高齡等分頁。</p>
-                  <div class="preview-chip-row">
-                    <span class="chip">獨立選單</span>
-                    <span class="chip">獨立匯入</span>
-                    <span class="chip">頁面新增</span>
-                    <span class="chip">Excel 匯出</span>
-                  </div>
                 </article>
               </div>
             </section>
@@ -1151,21 +1127,14 @@
               <div class="section-head">
                 <div>
                   <p class="eyebrow">個案 Excel 匯入</p>
-                  <h3>整理後同步到 Firebase 的 `caseRecords` 集合</h3>
+                  <h3>匯入個案資料並直接同步</h3>
                 </div>
                 <label class="file-btn">
-                  <input id="case-import-input" type="file" accept=".xls,.xlsx" />
+                  <input id="case-import-input" type="file" accept=".xls,.xlsx" data-requires-auth />
                   匯入個案 Excel
                 </label>
               </div>
-
-              <div class="import-callout">
-                <p>先整理欄位，再按「同步個案資料到 Firebase」。</p>
-                <button id="sync-cases-btn" class="primary-btn" disabled data-requires-auth>
-                  同步個案資料到 Firebase
-                </button>
-              </div>
-
+              <p class="muted-note compact-note">選檔後會自動同步到 Firebase。</p>
               <div id="case-preview" class="stack-list empty-state">尚未匯入個案 Excel。</div>
             </section>
 
@@ -1318,7 +1287,6 @@
         metricLoanedAssets: document.querySelector("#metric-loaned-assets"),
         metricLastInventory: document.querySelector("#metric-last-inventory"),
         recycleImportInput: document.querySelector("#recycle-import-input"),
-        syncRecycleAssetsButton: document.querySelector("#sync-recycle-assets-btn"),
         recycleImportPreview: document.querySelector("#recycle-import-preview"),
         recycleOpenAssetsButton: document.querySelector("#recycle-open-assets-btn"),
         recycleNewAssetButton: document.querySelector("#recycle-new-asset-btn"),
@@ -1326,7 +1294,6 @@
         recycleSummaryGrid: document.querySelector("#recycle-summary-grid"),
         recycleQuickList: document.querySelector("#recycle-quick-list"),
         projectImportInput: document.querySelector("#project-import-input"),
-        syncProjectAssetsButton: document.querySelector("#sync-project-assets-btn"),
         projectImportPreview: document.querySelector("#project-import-preview"),
         countySummary: document.querySelector("#county-summary"),
         inventoryFeed: document.querySelector("#inventory-feed"),
@@ -1381,7 +1348,6 @@
         loanNote: document.querySelector("#loan-note"),
         loanTableBody: document.querySelector("#loan-table-body"),
         caseImportInput: document.querySelector("#case-import-input"),
-        syncCasesButton: document.querySelector("#sync-cases-btn"),
         casePreview: document.querySelector("#case-preview"),
         caseTableBody: document.querySelector("#case-table-body"),
         assetCodeOptions: document.querySelector("#asset-code-options"),
@@ -1954,7 +1920,7 @@
       }
 
       async function upsertCaseRecords(records) {
-        const next = records.map((item) => ({
+        const next = normalizeCaseRecords(records).map((item) => ({
           ...item,
           updatedAt: new Date().toISOString(),
         }));
@@ -2076,9 +2042,6 @@
         elements.authRequiredTargets.forEach((item) => {
           item.disabled = !signedIn;
         });
-        elements.syncRecycleAssetsButton.disabled = !signedIn || state.importedRecycleAssets.length === 0;
-        elements.syncProjectAssetsButton.disabled = !signedIn || state.importedProjectAssets.length === 0;
-        elements.syncCasesButton.disabled = !signedIn || state.importedCases.length === 0;
         elements.uploadMatchedButton.disabled =
           !signedIn || !state.batchQueue.some((item) => item.assetId && !item.uploaded);
       }
@@ -2164,8 +2127,7 @@
         container.className = "stack-list";
         container.innerHTML = `
           <article class="preview-card">
-            <h4>匯入完成，共 ${records.length} 筆${options.label}</h4>
-            <p>整理後會同步到 Firebase 的 \`${options.fileKey}\` 資料集合。</p>
+            <h4>已整理並同步 ${records.length} 筆${options.label}</h4>
             <div class="preview-chip-row">
               ${sheets
                 .filter((sheet) => !sheet.skipped)
@@ -2684,15 +2646,17 @@
       }
 
       function renderLoanCaseOptions() {
+        const availableCases = getAvailableCases();
         const searchValue = normalizeText(elements.loanCaseSearch.value).toLowerCase();
-        const visibleCases = state.cases.filter((entry) => {
+        const visibleCases = availableCases.filter((entry) => {
           const haystack = [entry.caseCode, entry.name, entry.unit, entry.category]
             .map((value) => normalizeText(value).toLowerCase())
             .join(" ");
           return !searchValue || haystack.includes(searchValue);
         });
+        state.selectedLoanCaseIds = state.selectedLoanCaseIds.filter((id) => availableCases.some((entry) => entry.id === id));
         elements.loanTargetCount.textContent = `${state.selectedLoanCaseIds.length} 人`;
-        if (state.cases.length === 0) {
+        if (availableCases.length === 0) {
           elements.loanCaseOptions.className = "stack-list empty-state";
           elements.loanCaseOptions.textContent = "尚未載入個案資料。";
           return;
@@ -2774,7 +2738,7 @@
         elements.casePreview.className = "stack-list";
         elements.casePreview.innerHTML = `
           <article class="preview-card">
-            <h4>已整理 ${state.importedCases.length} 筆個案資料</h4>
+            <h4>已整理並同步 ${state.importedCases.length} 筆個案資料</h4>
             <div class="preview-chip-row">
               ${state.importedCaseSheets
                 .filter((sheet) => !sheet.skipped)
@@ -2797,11 +2761,12 @@
       }
 
       function renderCaseTable() {
-        if (state.cases.length === 0) {
+        const availableCases = getAvailableCases();
+        if (availableCases.length === 0) {
           elements.caseTableBody.innerHTML = '<tr><td colspan="6" class="muted-cell">尚未載入個案資料。</td></tr>';
           return;
         }
-        elements.caseTableBody.innerHTML = state.cases
+        elements.caseTableBody.innerHTML = availableCases
           .map(
             (entry) => `
               <tr>
@@ -2925,12 +2890,15 @@
         }
       }
 
-      async function refreshRemoteData() {
+      async function refreshRemoteData(options = {}) {
+        const { quiet = false } = options;
         if (!state.user) {
           renderAll();
           return;
         }
-        updateSyncBadge("從 Firebase 同步中...", "loading");
+        if (!quiet) {
+          updateSyncBadge("從 Firebase 同步中...", "loading");
+        }
         try {
           const [recycleAssets, projectAssets, loans, cases] = await Promise.all([
             listAssets("recycle"),
@@ -2941,12 +2909,50 @@
           state.recycleAssets = recycleAssets;
           state.projectAssets = projectAssets;
           state.loans = loans;
-          state.cases = cases;
-          updateSyncBadge("Firebase 資料已同步", "success");
+          state.cases = normalizeCaseRecords(cases);
+          if (!quiet) {
+            updateSyncBadge("Firebase 資料已同步", "success");
+          }
           renderAll();
         } catch (error) {
           console.error(error);
-          updateSyncBadge("同步失敗，請檢查 Firebase 權限", "error");
+          if (!quiet) {
+            updateSyncBadge("同步失敗，請檢查 Firebase 權限", "error");
+          }
+          renderAll();
+        }
+      }
+
+      async function autoSyncImportedRecords({
+        label,
+        records,
+        inputElement,
+        persist,
+        successMessage,
+        failureMessage,
+      }) {
+        if (!state.user) {
+          updateSyncBadge(`請先登入後再匯入${label}`, "warn");
+          if (inputElement) inputElement.value = "";
+          return false;
+        }
+        if (!records.length) {
+          updateSyncBadge(`${label}沒有可同步的資料`, "warn");
+          if (inputElement) inputElement.value = "";
+          return false;
+        }
+        updateSyncBadge(`${label}同步到 Firebase 中...`, "loading");
+        try {
+          await persist(records);
+          await refreshRemoteData({ quiet: true });
+          updateSyncBadge(successMessage, "success");
+          return true;
+        } catch (error) {
+          console.error(error);
+          updateSyncBadge(failureMessage, "error");
+          return false;
+        } finally {
+          if (inputElement) inputElement.value = "";
         }
       }
 
@@ -3197,11 +3203,103 @@
         return { fileName: file.name, records, sheetSummaries };
       }
 
-      function findCaseHeaderRow(rows = []) {
-        return rows.findIndex((row) => {
-          const canonical = row.map(normalizeHeader).filter(Boolean);
-          return canonical.some((cell) => /編號|案號|姓名/.test(cell));
+      function findCaseValue(raw = {}, patterns = []) {
+        const entries = Object.entries(raw || {});
+        for (const pattern of patterns) {
+          const normalizedPattern = normalizeHeader(pattern);
+          for (const [header, value] of entries) {
+            if (normalizeHeader(header).includes(normalizedPattern) && normalizeText(value)) {
+              return normalizeText(value);
+            }
+          }
+        }
+        return "";
+      }
+
+      function normalizeCaseEntry(entry = {}, index = 0) {
+        const caseCode = normalizeText(entry.caseCode || entry.code || "");
+        const name = normalizeText(entry.name || entry.personName || "");
+        const unit = normalizeText(entry.unit || entry.org || "");
+        const year = normalizeText(entry.year || "");
+        const category = normalizeText(entry.category || "");
+        const disabilityType = normalizeText(entry.disabilityType || "");
+        const ageGroup = normalizeText(entry.ageGroup || "");
+        const workType = normalizeText(entry.workType || "");
+        const gender = normalizeText(entry.gender || "");
+        const age = normalizeText(entry.age || "");
+        const injuryType = normalizeText(entry.injuryType || "");
+        const fallbackCode = caseCode || name || unit || `對象-${index + 1}`;
+        return {
+          ...entry,
+          id:
+            normalizeText(entry.id) ||
+            createStableId("case", `${fallbackCode}|${name}|${unit}|${year}|${category}|${index}`),
+          caseCode: caseCode || fallbackCode,
+          name,
+          unit,
+          year,
+          category,
+          disabilityType,
+          ageGroup,
+          workType,
+          gender,
+          age,
+          injuryType,
+          rawFields: entry.rawFields && typeof entry.rawFields === "object" ? entry.rawFields : {},
+          createdAt: entry.createdAt || new Date().toISOString(),
+        };
+      }
+
+      function normalizeCaseRecords(records = []) {
+        const cases = new Map();
+        records.forEach((entry, index) => {
+          const seed = {
+            caseCode: normalizeText(entry?.caseCode || entry?.code || ""),
+            name: normalizeText(entry?.name || entry?.personName || ""),
+            unit: normalizeText(entry?.unit || entry?.org || ""),
+          };
+          if (![seed.caseCode, seed.name, seed.unit].some(Boolean)) return;
+          const normalized = normalizeCaseEntry(entry, index);
+          cases.set(normalized.id, normalized);
         });
+        return [...cases.values()].sort((a, b) =>
+          `${a.caseCode || ""} ${a.name || ""}`.localeCompare(`${b.caseCode || ""} ${b.name || ""}`, "zh-Hant"),
+        );
+      }
+
+      function getAvailableCases() {
+        return normalizeCaseRecords(state.cases.length > 0 ? state.cases : state.importedCases);
+      }
+
+      function findCaseHeaderRow(rows = []) {
+        let bestIndex = -1;
+        let bestScore = 0;
+        rows.slice(0, 24).forEach((row, index) => {
+          const canonical = row.map(normalizeHeader).filter(Boolean);
+          if (canonical.length === 0) return;
+          const score = [
+            "編號",
+            "案號",
+            "案件編號",
+            "人員編號",
+            "姓名",
+            "個案姓名",
+            "單位",
+            "服務單位",
+            "類別",
+            "年度",
+            "性別",
+            "年齡",
+          ].reduce(
+            (count, pattern) => count + (canonical.some((cell) => cell.includes(normalizeHeader(pattern))) ? 1 : 0),
+            0,
+          );
+          if (score > bestScore) {
+            bestScore = score;
+            bestIndex = index;
+          }
+        });
+        return bestScore >= 2 ? bestIndex : -1;
       }
 
       async function parseCaseWorkbook(file) {
@@ -3232,28 +3330,37 @@
                 .filter(([header, value]) => header && value),
             );
             const caseCode =
-              raw["編號"] || raw["案號"] || raw["編號/案號"] || raw["案件編號"] || `${sheetName}-${rowIndex + 1}`;
-            records.push({
-              id: createStableId("case", `${file.name}|${sheetName}|${rowIndex + 1}|${caseCode}`),
-              caseCode: normalizeText(caseCode),
-              year: raw["年度"] || raw["申請年度"] || "",
-              category: raw["類別"] || raw["補助類別"] || "",
-              disabilityType: raw["身障"] || raw["障別"] || "",
-              ageGroup: raw["中高齡"] || raw["身障/中高齡"] || "",
-              workType: raw["勞"] || raw["就業型態"] || raw["ECFA"] || "",
-              unit: raw["單位"] || raw["服務單位"] || "",
-              name: raw["姓名"] || raw["個案姓名"] || "",
-              gender: raw["性別"] || "",
-              age: raw["年齡"] || "",
-              injuryType: raw["傷殘類別"] || raw["障礙類別"] || "",
-              rawFields: raw,
-              createdAt: new Date().toISOString(),
-            });
+              findCaseValue(raw, ["編號", "案號", "編號/案號", "案件編號", "個案編號", "人員編號", "員工編號"]) ||
+              `${sheetName}-${rowIndex + 1}`;
+            const name = findCaseValue(raw, ["姓名", "個案姓名", "名稱", "服務對象", "對象姓名"]);
+            const unit = findCaseValue(raw, ["單位", "服務單位", "所屬單位", "部門", "服務處"]);
+            if (![caseCode, name, unit].some(Boolean)) continue;
+            records.push(
+              normalizeCaseEntry(
+                {
+                  id: createStableId("case", `${file.name}|${sheetName}|${rowIndex + 1}|${caseCode}|${name}|${unit}`),
+                  caseCode,
+                  year: findCaseValue(raw, ["年度", "申請年度", "年別"]),
+                  category: findCaseValue(raw, ["類別", "補助類別", "案類", "身份別", "對象類別"]),
+                  disabilityType: findCaseValue(raw, ["身障", "障別", "障礙類別"]),
+                  ageGroup: findCaseValue(raw, ["中高齡", "身障/中高齡", "年齡層"]),
+                  workType: findCaseValue(raw, ["勞", "就業型態", "ECFA", "工作型態"]),
+                  unit,
+                  name,
+                  gender: findCaseValue(raw, ["性別"]),
+                  age: findCaseValue(raw, ["年齡"]),
+                  injuryType: findCaseValue(raw, ["傷殘類別", "障礙類別", "傷病類別"]),
+                  rawFields: raw,
+                  createdAt: new Date().toISOString(),
+                },
+                records.length,
+              ),
+            );
             count += 1;
           }
           sheetSummaries.push({ fileName: file.name, sheetName, count, skipped: false });
         });
-        return { fileName: file.name, records, sheetSummaries };
+        return { fileName: file.name, records: normalizeCaseRecords(records), sheetSummaries };
       }
 
       function loadImage(previewUrl) {
@@ -3320,71 +3427,65 @@
       async function handleRecycleImport(event) {
         const files = [...(event.target.files || [])];
         if (files.length === 0) return;
+        if (!state.user) {
+          updateSyncBadge("請先登入 Google / Firebase 再匯入回收 Excel", "warn");
+          event.target.value = "";
+          return;
+        }
         updateSyncBadge("分析回收輔具 Excel 中...", "loading");
         try {
           const parsed = await Promise.all(files.map((file) => parseRecycleWorkbook(file)));
           state.importedRecycleAssets = parsed.flatMap((item) => item.records);
           state.importedRecycleSheets = parsed.flatMap((item) => item.sheetSummaries);
-          updateSyncBadge(`已整理 ${state.importedRecycleAssets.length} 筆回收輔具資料`, "success");
+          renderImportPreviews();
+          await autoSyncImportedRecords({
+            label: "回收輔具",
+            records: state.importedRecycleAssets,
+            inputElement: event.target,
+            persist: (records) => upsertAssets("recycle", records),
+            successMessage: `回收輔具已自動同步到 Firebase，共 ${state.importedRecycleAssets.length} 筆`,
+            failureMessage: "回收輔具同步失敗",
+          });
         } catch (error) {
           console.error(error);
           state.importedRecycleAssets = [];
           state.importedRecycleSheets = [];
           updateSyncBadge("回收輔具 Excel 解析失敗", "error");
+          event.target.value = "";
         }
-        setAuthControls();
         renderImportPreviews();
       }
 
       async function handleProjectImport(event) {
         const files = [...(event.target.files || [])];
         if (files.length === 0) return;
+        if (!state.user) {
+          updateSyncBadge("請先登入 Google / Firebase 再匯入職再 Excel", "warn");
+          event.target.value = "";
+          return;
+        }
         updateSyncBadge("分析職再清單 Excel 中...", "loading");
         try {
           const parsed = await Promise.all(files.map((file) => parseProjectWorkbook(file)));
           state.importedProjectAssets = parsed.flatMap((item) => item.records);
           state.importedProjectSheets = parsed.flatMap((item) => item.sheetSummaries);
-          updateSyncBadge(`已整理 ${state.importedProjectAssets.length} 筆職再清單資料`, "success");
+          renderImportPreviews();
+          await autoSyncImportedRecords({
+            label: "職再清單",
+            records: state.importedProjectAssets,
+            inputElement: event.target,
+            persist: (records) => upsertAssets("project", records),
+            successMessage: `職再清單已自動同步到 Firebase，共 ${state.importedProjectAssets.length} 筆`,
+            failureMessage: "職再清單同步失敗",
+          });
         } catch (error) {
           console.error(error);
           state.importedProjectAssets = [];
           state.importedProjectSheets = [];
           updateSyncBadge("職再清單 Excel 解析失敗", "error");
+          event.target.value = "";
         }
-        setAuthControls();
         renderImportPreviews();
-      }
-
-      async function handleSyncRecycleAssets() {
-        if (!state.user || state.importedRecycleAssets.length === 0) return;
-        updateSyncBadge("寫入回收輔具到 Firebase 中...", "loading");
-        try {
-          await upsertAssets("recycle", state.importedRecycleAssets);
-          state.importedRecycleAssets = [];
-          state.importedRecycleSheets = [];
-          elements.recycleImportInput.value = "";
-          updateSyncBadge("回收輔具資料已同步到 Firebase", "success");
-          await refreshRemoteData();
-        } catch (error) {
-          console.error(error);
-          updateSyncBadge("回收輔具同步失敗", "error");
-        }
-      }
-
-      async function handleSyncProjectAssets() {
-        if (!state.user || state.importedProjectAssets.length === 0) return;
-        updateSyncBadge("寫入職再清單到 Firebase 中...", "loading");
-        try {
-          await upsertAssets("project", state.importedProjectAssets);
-          state.importedProjectAssets = [];
-          state.importedProjectSheets = [];
-          elements.projectImportInput.value = "";
-          updateSyncBadge("職再清單資料已同步到 Firebase", "success");
-          await refreshRemoteData();
-        } catch (error) {
-          console.error(error);
-          updateSyncBadge("職再清單同步失敗", "error");
-        }
       }
 
       async function handleAssetSave(event) {
@@ -3634,7 +3735,7 @@
           updateSyncBadge("請先掃描或輸入至少一件設備", "warn");
           return;
         }
-        const selectedCases = state.cases.filter((entry) => state.selectedLoanCaseIds.includes(entry.id));
+        const selectedCases = getAvailableCases().filter((entry) => state.selectedLoanCaseIds.includes(entry.id));
         updateSyncBadge("儲存借還紀錄中...", "loading");
         try {
           const processedCount = state.loanAssetQueue.length;
@@ -3668,36 +3769,33 @@
       async function handleCaseImport(event) {
         const file = event.target.files?.[0];
         if (!file) return;
+        if (!state.user) {
+          updateSyncBadge("請先登入 Google / Firebase 再匯入個案 Excel", "warn");
+          event.target.value = "";
+          return;
+        }
         updateSyncBadge("分析個案 Excel 中...", "loading");
         try {
           const parsed = await parseCaseWorkbook(file);
           state.importedCases = parsed.records;
           state.importedCaseSheets = parsed.sheetSummaries;
-          updateSyncBadge(`已整理 ${parsed.records.length} 筆個案資料`, "success");
+          renderCasePreview();
+          await autoSyncImportedRecords({
+            label: "個案資料",
+            records: state.importedCases,
+            inputElement: event.target,
+            persist: (records) => upsertCaseRecords(records),
+            successMessage: `個案資料已自動同步到 Firebase，共 ${parsed.records.length} 筆`,
+            failureMessage: "個案資料同步失敗",
+          });
         } catch (error) {
           console.error(error);
           state.importedCases = [];
           state.importedCaseSheets = [];
           updateSyncBadge("個案 Excel 解析失敗", "error");
+          event.target.value = "";
         }
-        setAuthControls();
         renderCasePreview();
-      }
-
-      async function handleCaseSync() {
-        if (!state.user || state.importedCases.length === 0) return;
-        updateSyncBadge("寫入個案資料中...", "loading");
-        try {
-          await upsertCaseRecords(state.importedCases);
-          state.importedCases = [];
-          state.importedCaseSheets = [];
-          elements.caseImportInput.value = "";
-          updateSyncBadge("個案資料已同步到 Firebase", "success");
-          await refreshRemoteData();
-        } catch (error) {
-          console.error(error);
-          updateSyncBadge("個案資料同步失敗", "error");
-        }
       }
 
       async function openPhotoModalFromDataset(dataset) {
@@ -3757,12 +3855,10 @@
 
         elements.refreshButton.addEventListener("click", refreshRemoteData);
         elements.recycleImportInput.addEventListener("change", handleRecycleImport);
-        elements.syncRecycleAssetsButton.addEventListener("click", handleSyncRecycleAssets);
         elements.recycleOpenAssetsButton.addEventListener("click", () => openAssetWorkspace("recycle"));
         elements.recycleNewAssetButton.addEventListener("click", () => openAssetWorkspace("recycle", { reset: true }));
         elements.downloadRecycleExcelButton.addEventListener("click", downloadRecycleExcel);
         elements.projectImportInput.addEventListener("change", handleProjectImport);
-        elements.syncProjectAssetsButton.addEventListener("click", handleSyncProjectAssets);
         elements.assetDatasetSwitch.addEventListener("change", () => {
           state.assetDataset = normalizeAssetKind(elements.assetDatasetSwitch.value);
           state.selectedAssetId = "";
@@ -3893,7 +3989,6 @@
         });
         elements.loanForm.addEventListener("submit", handleLoanSubmit);
         elements.caseImportInput.addEventListener("change", handleCaseImport);
-        elements.syncCasesButton.addEventListener("click", handleCaseSync);
         elements.photoModalClose.addEventListener("click", closePhotoModal);
         elements.photoModal.addEventListener("click", (event) => {
           if (event.target === elements.photoModal) {
