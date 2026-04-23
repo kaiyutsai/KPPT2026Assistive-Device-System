@@ -923,7 +923,7 @@
         </section>
 
         <section class="view" data-view="recycle">
-          <div class="split-layout">
+          <div class="stack-layout">
             <section class="surface">
               <div class="section-head">
                 <div>
@@ -931,24 +931,17 @@
                   <h3>獨立匯入、清冊整理與回收報表</h3>
                 </div>
                 <div class="toolbar">
-                  <button id="recycle-open-assets-btn" class="ghost-btn">查看回收清冊</button>
+                  <button id="recycle-open-assets-btn" class="primary-btn" data-requires-auth>匯入回收輔具 Excel</button>
                   <button id="recycle-new-asset-btn" class="ghost-btn" data-requires-auth>新增回收輔具</button>
-                  <button id="download-recycle-excel-btn" class="primary-btn">下載回收 Excel</button>
+                  <button id="download-recycle-excel-btn" class="ghost-btn">下載回收 Excel</button>
                 </div>
               </div>
 
               <div class="stack-list">
                 <article class="preview-card upload-panel">
-                  <div class="section-head">
-                    <div>
-                      <p class="eyebrow">回收清冊匯入</p>
-                      <h3>115年1月高屏澎東區回收輔具清冊.xls</h3>
-                    </div>
-                    <label class="file-btn">
-                      <input id="recycle-import-input" type="file" accept=".xls,.xlsx" data-requires-auth />
-                      匯入回收輔具 Excel
-                    </label>
-                  </div>
+                  <input id="recycle-import-input" type="file" accept=".xls,.xlsx" data-requires-auth hidden />
+                  <p class="eyebrow">回收清冊匯入</p>
+                  <h3>115年1月高屏澎東區回收輔具清冊.xls</h3>
                   <p class="muted-note compact-note">選檔後會自動同步到 Firebase，回收清單維持獨立管理。</p>
                   <div id="recycle-import-preview" class="stack-list empty-state">尚未匯入回收輔具 Excel。</div>
                 </article>
@@ -963,7 +956,35 @@
                 </div>
               </div>
               <div id="recycle-summary-grid" class="stack-list"></div>
-              <div id="recycle-quick-list" class="stack-list empty-state">同步回收輔具後，這裡會顯示摘要與最近清單。</div>
+            </section>
+
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">回收清單</p>
+                  <h3>搜尋與檢視回收輔具資料</h3>
+                </div>
+                <input id="recycle-page-search" class="field" type="search" placeholder="搜尋編號、名稱、類別、縣市、備註" />
+              </div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>照片</th>
+                      <th>編號</th>
+                      <th>名稱</th>
+                      <th>類別</th>
+                      <th>縣市</th>
+                      <th>目前狀態</th>
+                      <th>位置 / 備註</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recycle-table-body">
+                    <tr><td colspan="8" class="muted-cell">尚未載入回收輔具資料。</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </section>
           </div>
         </section>
@@ -988,20 +1009,16 @@
             <div class="section-head sticky-head">
               <div>
                 <p class="eyebrow">資料清冊</p>
-                <h3 id="asset-view-title">回收輔具清單</h3>
+                <h3 id="asset-view-title">職再借用清單</h3>
               </div>
               <div class="toolbar">
-                <select id="asset-dataset-switch" class="field">
-                  <option value="recycle">回收輔具清單</option>
-                  <option value="project">職再借用清單</option>
-                </select>
+                <input id="asset-dataset-switch" type="hidden" value="project" />
+                <span class="pill">職再借用清單</span>
                 <input id="asset-search" class="field" type="search" placeholder="搜尋編號、名稱、品牌、備註" />
                 <select id="asset-category-filter" class="field">
                   <option value="">全部類別</option>
                 </select>
-                <select id="asset-county-filter" class="field">
-                  <option value="">全部縣市</option>
-                </select>
+                <input id="asset-county-filter" type="hidden" value="" />
                 <button id="download-word-btn" class="ghost-btn">下載 Word 清單</button>
                 <button id="new-asset-btn" class="ghost-btn">新增輔具</button>
               </div>
@@ -1017,7 +1034,7 @@
                       <th>編號</th>
                       <th>名稱</th>
                       <th>類別</th>
-                      <th>縣市</th>
+                      <th id="asset-meta-header">品牌 / 型號</th>
                       <th>目前狀態</th>
                       <th>位置 / 備註</th>
                       <th>操作</th>
@@ -1472,12 +1489,15 @@
         dashboardRecycleSummary: document.querySelector("#dashboard-recycle-summary"),
         recycleSummaryGrid: document.querySelector("#recycle-summary-grid"),
         recycleQuickList: document.querySelector("#recycle-quick-list"),
+        recyclePageSearch: document.querySelector("#recycle-page-search"),
+        recycleTableBody: document.querySelector("#recycle-table-body"),
         projectImportInput: document.querySelector("#project-import-input"),
         projectImportPreview: document.querySelector("#project-import-preview"),
         dashboardProjectSummary: document.querySelector("#dashboard-project-summary"),
         countySummary: document.querySelector("#county-summary"),
         inventoryFeed: document.querySelector("#inventory-feed"),
         assetViewTitle: document.querySelector("#asset-view-title"),
+        assetMetaHeader: document.querySelector("#asset-meta-header"),
         assetDatasetSwitch: document.querySelector("#asset-dataset-switch"),
         assetSearch: document.querySelector("#asset-search"),
         assetCategoryFilter: document.querySelector("#asset-category-filter"),
@@ -2316,6 +2336,7 @@
         const config = getAssetDatasetConfig();
         elements.assetDatasetSwitch.value = config.key;
         elements.assetViewTitle.textContent = config.label;
+        elements.assetMetaHeader.textContent = config.key === "project" ? "品牌 / 型號" : "縣市";
         elements.newAssetButton.textContent = config.key === "project" ? "新增職再項目" : "新增回收輔具";
         elements.assetCountyFilter.disabled = config.key === "project";
       }
@@ -2466,8 +2487,7 @@
         if (assets.length === 0) {
           elements.recycleSummaryGrid.className = "stack-list empty-state";
           elements.recycleSummaryGrid.textContent = "同步回收輔具後，這裡會顯示摘要統計。";
-          elements.recycleQuickList.className = "stack-list empty-state";
-          elements.recycleQuickList.textContent = "同步回收輔具後，這裡會顯示最近資料。";
+          elements.recycleTableBody.innerHTML = '<tr><td colspan="8" class="muted-cell">尚未載入回收輔具資料。</td></tr>';
           return;
         }
 
@@ -2500,21 +2520,62 @@
           </article>
         `;
 
-        const recentAssets = [...assets]
-          .sort((a, b) => `${b.updatedAt || b.createdAt || ""}`.localeCompare(`${a.updatedAt || a.createdAt || ""}`))
-          .slice(0, 8);
-        elements.recycleQuickList.className = "stack-list";
-        elements.recycleQuickList.innerHTML = recentAssets
+        const searchValue = normalizeText(elements.recyclePageSearch?.value).toLowerCase();
+        const visibleAssets = assets.filter((asset) => {
+          const haystack = [
+            asset.code,
+            asset.name,
+            asset.category,
+            asset.county,
+            asset.status,
+            asset.location,
+            asset.remarks,
+            asset.description,
+          ]
+            .map((value) => normalizeText(value).toLowerCase())
+            .join(" ");
+          return !searchValue || haystack.includes(searchValue);
+        });
+
+        if (visibleAssets.length === 0) {
+          elements.recycleTableBody.innerHTML = '<tr><td colspan="8" class="muted-cell">找不到符合條件的回收輔具。</td></tr>';
+          return;
+        }
+
+        elements.recycleTableBody.innerHTML = visibleAssets
           .map(
             (asset) => `
-              <article class="preview-card">
-                <h4>${asset.code || "未填編號"}｜${asset.name || "未填名稱"}</h4>
-                <p>${[asset.county, asset.category, asset.status].filter(Boolean).join(" / ") || "尚未補齊欄位"}</p>
-                <p>${truncateText(asset.location || asset.reuseRecord || asset.remarks || "尚無位置與紀錄")}</p>
-              </article>
+              <tr>
+                <td>${
+                  asset.primaryPhoto
+                    ? asset.primaryPhoto.fileId
+                      ? `<img class="thumb" src="${asset.primaryPhoto.url}" alt="${asset.name}" data-photo-url="${asset.primaryPhoto.url}" data-drive-file-id="${asset.primaryPhoto.fileId}" data-photo-meta="${asset.code}｜${asset.name}" />`
+                      : `<img class="thumb" src="${asset.primaryPhoto.url}" alt="${asset.name}" data-photo-url="${asset.primaryPhoto.url}" data-photo-meta="${asset.code}｜${asset.name}" />`
+                    : '<div class="thumb-placeholder">無照片</div>'
+                }</td>
+                <td><strong>${asset.code || "未填"}</strong></td>
+                <td>${asset.name || "未命名"}</td>
+                <td>${asset.category || "-"}</td>
+                <td>${asset.county || "-"}</td>
+                <td>${asset.status || "-"}</td>
+                <td>${truncateText(asset.location || asset.reuseRecord || asset.remarks || asset.description || "-", 36)}</td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" data-action="open-inventory" data-id="${asset.id}" data-kind="${asset.assetKind}">盤點</button>
+                    ${
+                      asset.primaryPhoto
+                        ? `<button type="button" data-action="preview-photo" data-photo-url="${asset.primaryPhoto.url}" ${
+                            asset.primaryPhoto.fileId ? `data-drive-file-id="${asset.primaryPhoto.fileId}"` : ""
+                          } data-meta="${asset.code}｜${asset.name}">預覽</button>`
+                        : ""
+                    }
+                  </div>
+                </td>
+              </tr>
             `,
           )
           .join("");
+        hydrateDriveImages(elements.recycleTableBody);
       }
 
       function openAssetWorkspace(assetKind, { reset = false } = {}) {
@@ -2717,8 +2778,9 @@
 
       function renderAssetTable() {
         const assets = getVisibleAssets();
+        const config = getAssetDatasetConfig();
         if (assets.length === 0) {
-          elements.assetTableBody.innerHTML = `<tr><td colspan="8" class="muted-cell">目前沒有符合條件的${getAssetDatasetConfig().emptyLabel}。</td></tr>`;
+          elements.assetTableBody.innerHTML = `<tr><td colspan="8" class="muted-cell">目前沒有符合條件的${config.emptyLabel}。</td></tr>`;
           return;
         }
         elements.assetTableBody.innerHTML = assets
@@ -2726,16 +2788,19 @@
             const primaryPhoto = asset.primaryPhoto;
             const photoCell = primaryPhoto
               ? primaryPhoto.fileId
-                ? `<img class="thumb" src="${primaryPhoto.url}" alt="${asset.name}" data-photo-url="${primaryPhoto.url}" data-drive-file-id="${primaryPhoto.fileId}" data-photo-meta="${asset.code}｜${asset.name}" />`
+              ? `<img class="thumb" src="${primaryPhoto.url}" alt="${asset.name}" data-photo-url="${primaryPhoto.url}" data-drive-file-id="${primaryPhoto.fileId}" data-photo-meta="${asset.code}｜${asset.name}" />`
                 : `<img class="thumb" src="${primaryPhoto.url}" alt="${asset.name}" data-photo-url="${primaryPhoto.url}" data-photo-meta="${asset.code}｜${asset.name}" />`
               : '<div class="thumb-placeholder">無照片</div>';
+            const metaCell = config.key === "project"
+              ? [asset.brand, asset.model].filter(Boolean).join(" / ") || "-"
+              : asset.county || "-";
             return `
               <tr>
                 <td>${photoCell}</td>
                 <td><strong>${asset.code || "未填"}</strong></td>
                 <td>${asset.name || "未命名"}</td>
                 <td>${asset.category || "-"}</td>
-                <td>${asset.county || "-"}</td>
+                <td>${metaCell}</td>
                 <td>${asset.status || "-"}</td>
                 <td>${truncateText(asset.location || asset.remarks || asset.description || "-", 36)}</td>
                 <td>
@@ -4304,9 +4369,13 @@
 
         elements.refreshButton.addEventListener("click", refreshRemoteData);
         elements.recycleImportInput.addEventListener("change", handleRecycleImport);
-        elements.recycleOpenAssetsButton.addEventListener("click", () => openAssetWorkspace("recycle"));
+        elements.recycleOpenAssetsButton.addEventListener("click", () => {
+          if (elements.recycleImportInput.disabled) return;
+          elements.recycleImportInput.click();
+        });
         elements.recycleNewAssetButton.addEventListener("click", () => openAssetWorkspace("recycle", { reset: true }));
         elements.downloadRecycleExcelButton.addEventListener("click", downloadRecycleExcel);
+        elements.recyclePageSearch.addEventListener("input", renderRecycleWorkspace);
         elements.projectImportInput.addEventListener("change", handleProjectImport);
         elements.assetDatasetSwitch.addEventListener("change", () => {
           state.assetDataset = normalizeAssetKind(elements.assetDatasetSwitch.value);
@@ -4333,6 +4402,25 @@
           resetAssetForm();
         });
         elements.deleteAssetButton.addEventListener("click", handleAssetDelete);
+        elements.recycleTableBody.addEventListener("click", async (event) => {
+          const button = event.target.closest("button[data-action]");
+          const image = event.target.closest("[data-photo-url],[data-drive-file-id]");
+          if (image) {
+            await openPhotoModalFromDataset(image.dataset);
+            return;
+          }
+          if (!button) return;
+          if (button.dataset.action === "open-inventory") {
+            state.currentView = "inventory";
+            state.assetDataset = normalizeAssetKind(button.dataset.kind);
+            elements.inventoryManualCode.value =
+              findAssetById(button.dataset.id, button.dataset.kind)?.code || "";
+            renderAll();
+          }
+          if (button.dataset.action === "preview-photo") {
+            await openPhotoModalFromDataset(button.dataset);
+          }
+        });
         elements.assetTableBody.addEventListener("click", async (event) => {
           const button = event.target.closest("button[data-action]");
           const image = event.target.closest("[data-photo-url],[data-drive-file-id]");
