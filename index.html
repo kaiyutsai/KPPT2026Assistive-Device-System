@@ -26,9 +26,9 @@
         --danger: #d8384a;
         --line: rgba(24, 42, 91, 0.1);
         --shadow: 0 24px 60px rgba(18, 32, 74, 0.12);
-        --radius-xl: 28px;
-        --radius-lg: 18px;
-        --radius-md: 14px;
+        --radius-xl: 20px;
+        --radius-lg: 14px;
+        --radius-md: 10px;
       }
 
       * {
@@ -58,9 +58,15 @@
       }
 
       .app-shell {
+        position: relative;
         display: grid;
-        grid-template-columns: 320px 1fr;
+        grid-template-columns: 280px 1fr;
         min-height: 100vh;
+        transition: grid-template-columns 0.24s ease;
+      }
+
+      .app-shell.sidebar-collapsed {
+        grid-template-columns: 0 1fr;
       }
 
       .sidebar {
@@ -72,6 +78,25 @@
           linear-gradient(180deg, rgba(13, 26, 72, 0.92) 0%, rgba(10, 18, 48, 0.98) 100%),
           #0a1640;
         color: #f2f6ff;
+        overflow: hidden;
+        transition:
+          transform 0.24s ease,
+          opacity 0.24s ease,
+          padding 0.24s ease;
+      }
+
+      .app-shell.sidebar-collapsed .sidebar {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(-18px);
+      }
+
+      .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 18;
+        background: rgba(7, 11, 25, 0.42);
+        backdrop-filter: blur(4px);
       }
 
       .brand-block,
@@ -130,7 +155,7 @@
       .nav-btn {
         padding: 14px 18px;
         border: 1px solid transparent;
-        border-radius: 16px;
+        border-radius: 12px;
         background: transparent;
         color: rgba(242, 246, 255, 0.84);
         text-align: left;
@@ -183,6 +208,19 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: 16px;
+      }
+
+      .topbar-title {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .sidebar-toggle {
+        min-width: 46px;
+        min-height: 46px;
+        padding: 0;
+        font-size: 1.2rem;
       }
 
       .topbar h2 {
@@ -279,7 +317,8 @@
         justify-content: center;
         gap: 10px;
         padding: 12px 18px;
-        border-radius: 999px;
+        min-height: 46px;
+        border-radius: 14px;
         border: 1px solid transparent;
         text-decoration: none;
       }
@@ -328,9 +367,9 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 42px;
-        padding: 0 16px;
-        border-radius: 999px;
+        min-height: 40px;
+        padding: 0 14px;
+        border-radius: 12px;
         font-size: 0.92rem;
       }
 
@@ -364,6 +403,14 @@
       .status-badge.error {
         background: rgba(216, 56, 74, 0.14);
         color: var(--danger);
+      }
+
+      .user-chip,
+      .status-badge {
+        max-width: 240px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
       }
 
       .import-callout,
@@ -467,6 +514,7 @@
 
       .table-wrap {
         overflow: auto;
+        -webkit-overflow-scrolling: touch;
       }
 
       .data-table {
@@ -532,7 +580,7 @@
 
       .row-actions button {
         padding: 9px 12px;
-        border-radius: 999px;
+        border-radius: 12px;
         border: 1px solid rgba(31, 54, 120, 0.12);
         background: rgba(255, 255, 255, 0.92);
       }
@@ -643,7 +691,7 @@
 
       .filter-tab {
         padding: 10px 14px;
-        border-radius: 999px;
+        border-radius: 12px;
         border: 1px solid rgba(31, 54, 120, 0.1);
         background: rgba(255, 255, 255, 0.92);
         color: var(--muted);
@@ -699,14 +747,6 @@
         color: var(--muted);
       }
 
-      #asset-qr-canvas {
-        max-width: 100%;
-        border-radius: 20px;
-        background: #ffffff;
-        padding: 14px;
-        border: 1px solid rgba(31, 54, 120, 0.08);
-      }
-
       .toggle-row {
         display: inline-flex;
         align-items: center;
@@ -760,7 +800,7 @@
         width: min(760px, calc(100vw - 28px));
         padding: 22px;
         border: 1px solid rgba(31, 54, 120, 0.08);
-        border-radius: 24px;
+        border-radius: 18px;
         background: rgba(255, 255, 255, 0.98);
       }
 
@@ -797,20 +837,45 @@
       }
 
       @media (max-width: 1180px) {
-        .app-shell {
+        .topbar-actions {
+          justify-content: flex-end;
+        }
+      }
+
+      @media (max-width: 960px) {
+        .app-shell,
+        .app-shell.sidebar-collapsed {
           grid-template-columns: 1fr;
         }
 
         .sidebar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          z-index: 20;
+          width: min(82vw, 300px);
+          height: 100vh;
           gap: 18px;
+          transform: translateX(-100%);
+          overflow: auto;
+          box-shadow: 0 24px 56px rgba(7, 11, 25, 0.28);
+        }
+
+        .app-shell.sidebar-open .sidebar {
+          transform: translateX(0);
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .app-shell:not(.sidebar-open) .sidebar {
+          pointer-events: none;
         }
 
         .sidebar-note {
           margin-top: 0;
         }
-      }
 
-      @media (max-width: 960px) {
         .workspace {
           padding: 20px;
         }
@@ -825,6 +890,14 @@
 
         .sticky-head {
           position: static;
+        }
+
+        .topbar {
+          align-items: stretch;
+        }
+
+        .topbar-actions {
+          justify-content: flex-start;
         }
       }
 
@@ -846,6 +919,19 @@
         .topbar-actions,
         .toolbar {
           width: 100%;
+        }
+
+        .topbar-actions > * {
+          flex: 1 1 calc(50% - 12px);
+        }
+
+        .topbar-title {
+          align-items: center;
+        }
+
+        .user-chip,
+        .status-badge {
+          justify-content: center;
         }
 
         .loan-command-row > *,
@@ -876,19 +962,23 @@
           <button class="nav-btn" data-view-target="cases">個案匯入</button>
         </nav>
       </aside>
+      <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" hidden aria-label="關閉選單"></button>
 
       <main class="workspace">
         <header class="topbar">
-          <div>
-            <p class="eyebrow">營運工作台</p>
-            <h2 id="workspace-title">總覽</h2>
+          <div class="topbar-title">
+            <button id="sidebar-toggle-btn" class="ghost-btn sidebar-toggle" type="button" aria-label="顯示選單">☰</button>
+            <div>
+              <p class="eyebrow">營運工作台</p>
+              <h2 id="workspace-title">總覽</h2>
+            </div>
           </div>
           <div class="topbar-actions">
             <div id="user-chip" class="user-chip" hidden></div>
-            <button id="sign-in-btn" class="ghost-btn">Google / Firebase 登入</button>
-            <button id="sign-out-btn" class="ghost-btn" hidden>清除授權</button>
-            <button id="refresh-btn" class="primary-btn">重新整理</button>
-            <div id="sync-badge" class="status-badge idle">尚未連線</div>
+            <button id="sign-in-btn" class="ghost-btn" title="登入">登入</button>
+            <button id="sign-out-btn" class="ghost-btn" hidden title="登出">登出</button>
+            <button id="refresh-btn" class="primary-btn" title="重新整理">↻</button>
+            <div id="sync-badge" class="status-badge idle" title="尚未連線">未連線</div>
           </div>
         </header>
 
@@ -1357,14 +1447,6 @@
           <div id="asset-photo-strip" class="photo-strip"></div>
         </div>
 
-        <div class="span-2 detail-block">
-          <div class="detail-block-head">
-            <h4>QR 預覽</h4>
-            <button id="download-qr-btn" type="button" class="ghost-btn">下載 QR</button>
-          </div>
-          <canvas id="asset-qr-canvas" width="220" height="220"></canvas>
-        </div>
-
         <div class="form-actions span-2">
           <button type="submit" class="primary-btn" data-requires-auth>儲存輔具</button>
           <button id="reset-asset-form-btn" type="button" class="ghost-btn">清空表單</button>
@@ -1434,6 +1516,7 @@
         assetDataset: "recycle",
         selectedAssetId: "",
         selectedAssetKind: "recycle",
+        sidebarOpen: window.innerWidth > 960,
         currentView: "dashboard",
         lastSingleResult: null,
         drive: {
@@ -1483,6 +1566,10 @@
       };
 
       const elements = {
+        appShell: document.querySelector(".app-shell"),
+        sidebar: document.querySelector(".sidebar"),
+        sidebarBackdrop: document.querySelector("#sidebar-backdrop"),
+        sidebarToggleButton: document.querySelector("#sidebar-toggle-btn"),
         workspaceTitle: document.querySelector("#workspace-title"),
         navButtons: [...document.querySelectorAll(".nav-btn")],
         views: [...document.querySelectorAll(".view")],
@@ -1540,8 +1627,6 @@
         assetRemarks: document.querySelector("#asset-remarks"),
         assetPhotoStrip: document.querySelector("#asset-photo-strip"),
         assetPhotoCount: document.querySelector("#asset-photo-count"),
-        assetQrCanvas: document.querySelector("#asset-qr-canvas"),
-        downloadQrButton: document.querySelector("#download-qr-btn"),
         resetAssetFormButton: document.querySelector("#reset-asset-form-btn"),
         deleteAssetButton: document.querySelector("#delete-asset-btn"),
         singlePhotoInput: document.querySelector("#single-photo-input"),
@@ -1682,8 +1767,30 @@
         });
       }
 
+      function isCompactViewport() {
+        return window.innerWidth <= 960;
+      }
+
+      function applySidebarState() {
+        const compact = isCompactViewport();
+        elements.appShell.classList.toggle("sidebar-open", state.sidebarOpen && compact);
+        elements.appShell.classList.toggle("sidebar-collapsed", !state.sidebarOpen && !compact);
+        elements.sidebarBackdrop.hidden = !(compact && state.sidebarOpen);
+        elements.sidebarToggleButton.textContent = state.sidebarOpen ? "✕" : "☰";
+        elements.sidebarToggleButton.setAttribute("aria-label", state.sidebarOpen ? "隱藏選單" : "顯示選單");
+        elements.sidebarToggleButton.title = state.sidebarOpen ? "隱藏選單" : "顯示選單";
+      }
+
       function updateSyncBadge(text, tone = "idle") {
-        elements.syncBadge.textContent = text;
+        const compactText = {
+          idle: "未連線",
+          loading: "同步中",
+          success: "已連線",
+          warn: "提醒",
+          error: "異常",
+        }[tone] || text;
+        elements.syncBadge.textContent = compactText;
+        elements.syncBadge.title = text;
         elements.syncBadge.className = `status-badge ${tone}`;
       }
 
@@ -2291,7 +2398,10 @@
         elements.signInButton.hidden = signedIn;
         elements.signOutButton.hidden = !signedIn;
         elements.userChip.hidden = !signedIn;
-        elements.userChip.textContent = signedIn ? state.user.email || state.user.displayName : "";
+        elements.userChip.textContent = signedIn
+          ? state.user.displayName || state.user.email?.split("@")[0] || "已登入"
+          : "";
+        elements.userChip.title = signedIn ? state.user.email || state.user.displayName || "" : "";
         elements.authRequiredTargets.forEach((item) => {
           item.disabled = !signedIn;
         });
@@ -2879,18 +2989,6 @@
         hydrateDriveImages(elements.assetPhotoStrip);
       }
 
-      function renderQrCanvas(asset) {
-        if (!window.QRious) return;
-        new window.QRious({
-          element: elements.assetQrCanvas,
-          value: normalizeText(asset?.code || "尚未填寫編號"),
-          size: 220,
-          foreground: "#0a1640",
-          background: "#ffffff",
-          level: "H",
-        });
-      }
-
       function escapeHtml(value = "") {
         return String(value ?? "")
           .replace(/&/g, "&amp;")
@@ -2913,13 +3011,13 @@
         return canvas.toDataURL("image/png");
       }
 
-      function downloadWordList() {
-        const assets = getVisibleAssets();
+      function downloadWordList(assetsInput = null, options = {}) {
+        const assets = Array.isArray(assetsInput) ? assetsInput : getVisibleAssets();
         if (assets.length === 0) {
           updateSyncBadge("目前沒有可下載的清單資料", "warn");
           return;
         }
-        const title = `${getAssetDatasetConfig().label} QR 清單`;
+        const title = options.title || `${getAssetDatasetConfig().label} QR 清單`;
         const rows = assets
           .map((asset) => {
             const qrDataUrl = buildQrDataUrl(asset.code);
@@ -2975,7 +3073,7 @@
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `${title}.doc`;
+        link.download = options.fileName || `${title}.doc`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1500);
       }
@@ -2988,7 +3086,6 @@
         elements.assetFormTitle.textContent = `新增 / 編輯${getAssetDatasetConfig().emptyLabel}`;
         elements.assetPhotoStrip.innerHTML = '<div class="empty-state">這筆資料目前沒有照片。</div>';
         elements.assetPhotoCount.textContent = "0 張";
-        renderQrCanvas({ code: "尚未填寫編號" });
       }
 
       function fillAssetForm(asset) {
@@ -3010,7 +3107,6 @@
         elements.assetDescription.value = asset.description || "";
         elements.assetRemarks.value = asset.remarks || "";
         renderPhotoStrip(asset);
-        renderQrCanvas(asset);
       }
 
       function openAssetModal(asset = null, options = {}) {
@@ -4003,6 +4099,7 @@
         event.preventDefault();
         if (!state.user) return;
         const existing = getSelectedAsset();
+        const isNewAsset = !existing;
         const assetKind = normalizeAssetKind(existing?.assetKind || state.assetDataset);
         const [brand = "", model = ""] = normalizeText(elements.assetBrandModel.value)
           .split("/")
@@ -4034,7 +4131,15 @@
           state.selectedAssetId = record.id;
           state.selectedAssetKind = assetKind;
           updateSyncBadge("輔具資料已儲存到 Firebase", "success");
-          await refreshRemoteData();
+          await refreshRemoteData({ quiet: true });
+          if (isNewAsset) {
+            const labelBase = normalizeText(record.code || record.name || "新品項");
+            const safeFileLabel = labelBase.replace(/[\\/:*?"<>|]/g, "-") || "新品項";
+            downloadWordList([record], {
+              title: `${labelBase} QR 標籤`,
+              fileName: `${safeFileLabel}_QR標籤.doc`,
+            });
+          }
           closeAssetModal();
         } catch (error) {
           console.error(error);
@@ -4400,9 +4505,23 @@
               state.selectedAssetId = state.selectedAssetKind === "project" ? state.selectedAssetId : "";
             }
             state.currentView = button.dataset.viewTarget;
+            if (isCompactViewport()) {
+              state.sidebarOpen = false;
+              applySidebarState();
+            }
             renderAll();
           });
         });
+
+        elements.sidebarToggleButton.addEventListener("click", () => {
+          state.sidebarOpen = !state.sidebarOpen;
+          applySidebarState();
+        });
+        elements.sidebarBackdrop.addEventListener("click", () => {
+          state.sidebarOpen = false;
+          applySidebarState();
+        });
+        window.addEventListener("resize", applySidebarState);
 
         elements.signInButton.addEventListener("click", async () => {
           try {
@@ -4422,7 +4541,7 @@
 
         elements.signOutButton.addEventListener("click", async () => {
           await signOutUser();
-          updateSyncBadge("已清除授權", "warn");
+          updateSyncBadge("已登出", "idle");
           renderAll();
         });
 
@@ -4525,14 +4644,6 @@
             closeAssetModal();
           }
         });
-        elements.downloadQrButton.addEventListener("click", () => {
-          const asset = getSelectedAsset();
-          if (!asset?.code) return;
-          const link = document.createElement("a");
-          link.href = elements.assetQrCanvas.toDataURL("image/png");
-          link.download = `${asset.code}-qr.png`;
-          link.click();
-        });
         elements.singlePhotoInput.addEventListener("change", handleSinglePhoto);
         elements.singleInventoryResult.addEventListener("click", async (event) => {
           const button = event.target.closest("button[data-action]");
@@ -4541,11 +4652,10 @@
             await uploadSingleResult();
           }
           if (button.dataset.action === "open-asset") {
-            state.currentView = "assets";
-            state.assetDataset = normalizeAssetKind(button.dataset.kind);
-            state.selectedAssetId = button.dataset.id;
-            state.selectedAssetKind = normalizeAssetKind(button.dataset.kind);
-            renderAll();
+            const asset = findAssetById(button.dataset.id, button.dataset.kind);
+            if (asset) {
+              openAssetModal(asset);
+            }
           }
         });
         elements.batchPhotoInput.addEventListener("change", handleBatchPhotos);
@@ -4558,11 +4668,10 @@
             return;
           }
           if (button?.dataset.action === "open-asset") {
-            state.currentView = "assets";
-            state.assetDataset = normalizeAssetKind(button.dataset.kind);
-            state.selectedAssetId = button.dataset.id;
-            state.selectedAssetKind = normalizeAssetKind(button.dataset.kind);
-            renderAll();
+            const asset = findAssetById(button.dataset.id, button.dataset.kind);
+            if (asset) {
+              openAssetModal(asset);
+            }
           }
         });
         elements.loanBorrowButton.addEventListener("click", () => openLoanModal("borrow"));
@@ -4648,6 +4757,7 @@
         elements.loanDate.valueAsDate = new Date();
         bindFirebaseAuthObserver();
         bindEvents();
+        applySidebarState();
         renderAll();
         updateSyncBadge("請先按「Google / Firebase 登入」", "idle");
       }
