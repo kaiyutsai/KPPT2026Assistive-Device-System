@@ -683,6 +683,28 @@
         margin-left: auto;
       }
 
+      .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .settings-stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .settings-meta {
+        display: grid;
+        gap: 6px;
+      }
+
+      .settings-meta p,
+      .settings-form-note {
+        margin: 0;
+        color: var(--muted);
+      }
+
       .filter-tab-row {
         display: flex;
         flex-wrap: wrap;
@@ -881,6 +903,7 @@
         }
 
         .hero-band,
+        .settings-grid,
         .split-layout,
         .form-grid,
         .single-result,
@@ -954,12 +977,13 @@
         </div>
 
         <nav class="nav-stack">
-          <button class="nav-btn active" data-view-target="dashboard">總覽</button>
+          <button class="nav-btn" data-view-target="dashboard">總覽</button>
           <button class="nav-btn" data-view-target="recycle" data-asset-kind="recycle">回收輔具管理</button>
           <button class="nav-btn" data-view-target="assets" data-asset-kind="project">單位 / 工具清冊</button>
           <button class="nav-btn" data-view-target="inventory">盤點拍照</button>
-          <button class="nav-btn" data-view-target="loans">借用 / 歸還</button>
+          <button class="nav-btn active" data-view-target="loans">借用 / 歸還</button>
           <button class="nav-btn" data-view-target="cases">個案匯入</button>
+          <button class="nav-btn" data-view-target="settings">設定</button>
         </nav>
       </aside>
       <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" hidden aria-label="關閉選單"></button>
@@ -970,19 +994,12 @@
             <button id="sidebar-toggle-btn" class="ghost-btn sidebar-toggle" type="button" aria-label="顯示選單">☰</button>
             <div>
               <p class="eyebrow">營運工作台</p>
-              <h2 id="workspace-title">總覽</h2>
+              <h2 id="workspace-title">借用 / 歸還</h2>
             </div>
-          </div>
-          <div class="topbar-actions">
-            <div id="user-chip" class="user-chip" hidden></div>
-            <button id="sign-in-btn" class="ghost-btn" title="登入">登入</button>
-            <button id="sign-out-btn" class="ghost-btn" hidden title="登出">登出</button>
-            <button id="refresh-btn" class="primary-btn" title="重新整理">↻</button>
-            <div id="sync-badge" class="status-badge idle" title="尚未連線">未連線</div>
           </div>
         </header>
 
-        <section class="view active" data-view="dashboard">
+        <section class="view" data-view="dashboard">
           <div class="stack-layout">
             <section class="hero-band">
               <article class="metric-panel">
@@ -1201,7 +1218,7 @@
           </div>
         </section>
 
-        <section class="view" data-view="loans">
+        <section class="view active" data-view="loans">
           <div class="stack-layout">
             <section class="surface loan-command-panel">
               <div class="section-head">
@@ -1298,6 +1315,98 @@
               </table>
             </div>
           </section>
+        </section>
+
+        <section class="view" data-view="settings">
+          <div class="stack-layout">
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">帳號設定</p>
+                  <h3>登入、同步與人員名稱</h3>
+                </div>
+              </div>
+              <div class="settings-grid">
+                <article class="preview-card settings-stack">
+                  <h4>目前登入資訊</h4>
+                  <div id="user-chip" class="user-chip" hidden></div>
+                  <div class="settings-meta">
+                    <p id="settings-account-name">尚未登入</p>
+                    <p id="settings-account-email">請先登入 Google 帳號。</p>
+                  </div>
+                  <div class="preview-chip-row">
+                    <span id="settings-role-pill" class="pill">訪客</span>
+                    <span id="sync-badge" class="status-badge idle" title="尚未連線">未連線</span>
+                  </div>
+                </article>
+
+                <article class="preview-card settings-stack">
+                  <h4>帳號操作</h4>
+                  <div class="toolbar">
+                    <button id="sign-in-btn" class="ghost-btn" title="登入">登入</button>
+                    <button id="sign-out-btn" class="ghost-btn" hidden title="登出">登出</button>
+                    <button id="refresh-btn" class="primary-btn" title="重新整理">↻</button>
+                  </div>
+                  <p class="settings-form-note">首次開啟會自動跳出 Google 登入，之後會記住登入狀態。</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="surface">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">登入權限</p>
+                  <h3>可登入 Gmail 與人員名稱設定</h3>
+                </div>
+              </div>
+
+              <div id="settings-admin-note" class="empty-state" hidden>只有管理員可以設定可登入帳號。</div>
+
+              <div id="settings-admin-panel" class="stack-layout">
+                <article class="preview-card settings-stack">
+                  <h4>管理員</h4>
+                  <p class="settings-form-note">預設管理員：<strong>tony0972022@gmail.com</strong></p>
+                </article>
+
+                <article class="preview-card settings-stack">
+                  <h4>新增 / 編輯可登入帳號</h4>
+                  <form id="allowed-user-form" class="form-grid">
+                    <input id="allowed-user-id" type="hidden" />
+                    <label>Gmail
+                      <input id="allowed-user-email" class="field" type="email" placeholder="name@gmail.com" required />
+                    </label>
+                    <label>人員名稱
+                      <input id="allowed-user-name" class="field" type="text" placeholder="例如 蔡凱宇" required />
+                    </label>
+                    <div class="form-actions span-2">
+                      <button type="submit" class="primary-btn" data-requires-auth>儲存帳號</button>
+                      <button id="allowed-user-reset-btn" type="button" class="ghost-btn">清空</button>
+                      <button id="allowed-user-delete-btn" type="button" class="ghost-btn danger" data-requires-auth>移除此帳號</button>
+                    </div>
+                  </form>
+                </article>
+
+                <article class="preview-card settings-stack">
+                  <h4>已開通帳號</h4>
+                  <div class="table-wrap">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Gmail</th>
+                          <th>人員名稱</th>
+                          <th>角色</th>
+                          <th>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody id="allowed-user-table-body">
+                        <tr><td colspan="4" class="muted-cell">尚未載入帳號設定。</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              </div>
+            </section>
+          </div>
         </section>
       </main>
     </div>
@@ -1477,7 +1586,12 @@
         projectAssets: "projectAssets",
         loanRecords: "loanRecords",
         caseRecords: "caseRecords",
+        allowedUsers: "allowedUsers",
       };
+
+      const ADMIN_EMAIL = "tony0972022@gmail.com";
+      const AUTO_LOGIN_DISABLED_KEY = "kppt-auto-login-disabled";
+      const AUTO_LOGIN_SESSION_KEY = "kppt-auto-login-attempted";
 
       const DRIVE_CONFIG = {
         clientId: "658513065345-kst6ahnsauvlu4dq2f2jq6vqp2p9gm3n.apps.googleusercontent.com",
@@ -1509,6 +1623,7 @@
         importedCaseSheets: [],
         batchQueue: [],
         loanAssetQueue: [],
+        allowedUsers: [],
         selectedLoanCaseIds: [],
         loanMode: "borrow",
         selectedCaseId: "",
@@ -1516,8 +1631,10 @@
         assetDataset: "recycle",
         selectedAssetId: "",
         selectedAssetKind: "recycle",
+        selectedAllowedUserEmail: "",
+        authInProgress: false,
         sidebarOpen: window.innerWidth > 960,
-        currentView: "dashboard",
+        currentView: "loans",
         lastSingleResult: null,
         drive: {
           rootFolderId: "",
@@ -1539,6 +1656,7 @@
         inventory: "盤點拍照",
         loans: "借用 / 歸還",
         cases: "個案匯入",
+        settings: "設定",
       };
 
       const ASSET_DATASETS = {
@@ -1578,6 +1696,18 @@
         userChip: document.querySelector("#user-chip"),
         refreshButton: document.querySelector("#refresh-btn"),
         syncBadge: document.querySelector("#sync-badge"),
+        settingsAccountName: document.querySelector("#settings-account-name"),
+        settingsAccountEmail: document.querySelector("#settings-account-email"),
+        settingsRolePill: document.querySelector("#settings-role-pill"),
+        settingsAdminPanel: document.querySelector("#settings-admin-panel"),
+        settingsAdminNote: document.querySelector("#settings-admin-note"),
+        allowedUserForm: document.querySelector("#allowed-user-form"),
+        allowedUserId: document.querySelector("#allowed-user-id"),
+        allowedUserEmail: document.querySelector("#allowed-user-email"),
+        allowedUserName: document.querySelector("#allowed-user-name"),
+        allowedUserResetButton: document.querySelector("#allowed-user-reset-btn"),
+        allowedUserDeleteButton: document.querySelector("#allowed-user-delete-btn"),
+        allowedUserTableBody: document.querySelector("#allowed-user-table-body"),
         metricTotalAssets: document.querySelector("#metric-total-assets"),
         metricPhotoAssets: document.querySelector("#metric-photo-assets"),
         metricLoanedAssets: document.querySelector("#metric-loaned-assets"),
@@ -1781,6 +1911,80 @@
         elements.sidebarToggleButton.title = state.sidebarOpen ? "隱藏選單" : "顯示選單";
       }
 
+      function normalizeEmail(value = "") {
+        return normalizeText(value).toLowerCase();
+      }
+
+      function normalizeAllowedUserRecords(records = []) {
+        return uniqueBy(
+          records
+            .map((item) => ({
+              id: normalizeEmail(item.id || item.email),
+              email: normalizeEmail(item.email || item.id),
+              name: normalizeText(item.name),
+              createdAt: item.createdAt || "",
+              updatedAt: item.updatedAt || "",
+            }))
+            .filter((item) => item.email),
+          (item) => item.email,
+        ).sort((a, b) => {
+          if (a.email === ADMIN_EMAIL) return -1;
+          if (b.email === ADMIN_EMAIL) return 1;
+          return a.email.localeCompare(b.email, "en");
+        });
+      }
+
+      function isAdminUser(user = state.user) {
+        return normalizeEmail(user?.email) === ADMIN_EMAIL;
+      }
+
+      function getAllowedUserEntry(email = state.user?.email) {
+        const normalizedEmail = normalizeEmail(email);
+        if (!normalizedEmail) return null;
+        const stored = state.allowedUsers.find((item) => item.email === normalizedEmail) || null;
+        if (normalizedEmail === ADMIN_EMAIL) {
+          return {
+            id: ADMIN_EMAIL,
+            email: ADMIN_EMAIL,
+            name: stored?.name || "",
+            role: "admin",
+            isAdmin: true,
+          };
+        }
+        if (!stored) return null;
+        return {
+          ...stored,
+          role: "member",
+          isAdmin: false,
+        };
+      }
+
+      function isAuthorizedUser(user = state.user) {
+        return Boolean(getAllowedUserEntry(user?.email));
+      }
+
+      function getOperatorName(user = state.user) {
+        const entry = getAllowedUserEntry(user?.email);
+        return entry?.name || user?.firebaseDisplayName || user?.email?.split("@")[0] || "";
+      }
+
+      function syncCurrentUserProfile() {
+        if (!state.user) return;
+        state.user.displayName = getOperatorName(state.user);
+      }
+
+      function shouldAutoSignIn() {
+        return !state.user &&
+          !state.authInProgress &&
+          !localStorage.getItem(AUTO_LOGIN_DISABLED_KEY) &&
+          !sessionStorage.getItem(AUTO_LOGIN_SESSION_KEY);
+      }
+
+      function isPermissionDeniedError(error) {
+        const message = String(error?.message || "").toLowerCase();
+        return error?.code === "permission-denied" || message.includes("insufficient permissions");
+      }
+
       function updateSyncBadge(text, tone = "idle") {
         const compactText = {
           idle: "未連線",
@@ -1814,6 +2018,7 @@
         return {
           uid: user.uid,
           email: user.email || "已登入",
+          firebaseDisplayName: user.displayName || "",
           displayName: user.displayName || user.email || "已登入",
         };
       }
@@ -1851,13 +2056,27 @@
               state.projectAssets = [];
               state.loans = [];
               state.cases = [];
+              state.allowedUsers = [];
               state.selectedCaseId = "";
               renderAll();
             }
             updateSyncBadge("請先登入 Google / Firebase", "idle");
+            if (shouldAutoSignIn()) {
+              sessionStorage.setItem(AUTO_LOGIN_SESSION_KEY, "1");
+              try {
+                updateSyncBadge("正在登入 Google...", "loading");
+                await triggerGoogleSignIn({ auto: true });
+              } catch (error) {
+                console.error(error);
+                localStorage.setItem(AUTO_LOGIN_DISABLED_KEY, "1");
+                updateSyncBadge(error.message || "Google 登入失敗", "error");
+              }
+            }
             return;
           }
           try {
+            localStorage.removeItem(AUTO_LOGIN_DISABLED_KEY);
+            sessionStorage.removeItem(AUTO_LOGIN_SESSION_KEY);
             if (!state.accessToken) {
               await restoreDriveAccessTokenFromRedirect();
             }
@@ -1873,12 +2092,12 @@
         });
       }
 
-      async function signInWithGoogle() {
+      async function signInWithGoogle(options = {}) {
+        const { preferRedirect = false } = options;
         const { auth } = ensureFirebaseReady();
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.addScope("https://www.googleapis.com/auth/drive.file");
-        provider.setCustomParameters({ prompt: "select_account" });
-        const useRedirect = window.matchMedia("(max-width: 768px)").matches;
+        const useRedirect = preferRedirect || window.matchMedia("(max-width: 768px)").matches;
         if (useRedirect) {
           await auth.signInWithRedirect(provider);
           return null;
@@ -1891,8 +2110,29 @@
         return state.user;
       }
 
-      async function signOutUser() {
+      async function triggerGoogleSignIn({ auto = false } = {}) {
+        if (state.authInProgress) return null;
+        state.authInProgress = true;
+        if (!auto) {
+          localStorage.removeItem(AUTO_LOGIN_DISABLED_KEY);
+          sessionStorage.removeItem(AUTO_LOGIN_SESSION_KEY);
+        }
+        try {
+          return await signInWithGoogle({ preferRedirect: auto });
+        } finally {
+          state.authInProgress = false;
+        }
+      }
+
+      async function signOutUser(options = {}) {
+        const { suppressAutoLogin = true } = options;
         const { auth } = ensureFirebaseReady();
+        if (suppressAutoLogin) {
+          localStorage.setItem(AUTO_LOGIN_DISABLED_KEY, "1");
+        } else {
+          localStorage.removeItem(AUTO_LOGIN_DISABLED_KEY);
+        }
+        sessionStorage.removeItem(AUTO_LOGIN_SESSION_KEY);
         await auth.signOut();
         closeLoanModal();
         closeCaseModal();
@@ -1904,9 +2144,11 @@
         state.projectAssets = [];
         state.loans = [];
         state.cases = [];
+        state.allowedUsers = [];
         state.loanAssetQueue = [];
         state.selectedLoanCaseIds = [];
         state.selectedCaseId = "";
+        state.selectedAllowedUserEmail = "";
         state.selectedAssetId = "";
         state.selectedAssetKind = state.assetDataset;
         state.drive = { rootFolderId: "", photoFolderId: "", fileIds: {} };
@@ -2226,6 +2468,22 @@
         return readFirestoreCollection(FIREBASE_COLLECTIONS.caseRecords);
       }
 
+      async function listAllowedUsers() {
+        return readFirestoreCollection(FIREBASE_COLLECTIONS.allowedUsers);
+      }
+
+      async function getAllowedUserRecord(email) {
+        const normalizedEmail = normalizeEmail(email);
+        if (!normalizedEmail) return null;
+        const { db } = ensureFirebaseReady();
+        const snapshot = await db.collection(FIREBASE_COLLECTIONS.allowedUsers).doc(normalizedEmail).get();
+        if (!snapshot.exists) return null;
+        return {
+          id: snapshot.id,
+          ...snapshot.data(),
+        };
+      }
+
       async function upsertAssets(assetKind, records) {
         const normalizedKind = normalizeAssetKind(assetKind);
         const next = records.map((item) => ({
@@ -2285,6 +2543,23 @@
           updatedAt: new Date().toISOString(),
         }));
         await commitInFirestoreBatches(FIREBASE_COLLECTIONS.caseRecords, next);
+      }
+
+      async function upsertAllowedUsers(records) {
+        const next = normalizeAllowedUserRecords(records).map((item) => ({
+          ...item,
+          id: item.email,
+          email: item.email,
+          updatedAt: new Date().toISOString(),
+          createdAt: item.createdAt || new Date().toISOString(),
+        }));
+        await commitInFirestoreBatches(FIREBASE_COLLECTIONS.allowedUsers, next);
+      }
+
+      async function deleteAllowedUser(email) {
+        const normalizedEmail = normalizeEmail(email);
+        const { db } = ensureFirebaseReady();
+        await db.collection(FIREBASE_COLLECTIONS.allowedUsers).doc(normalizedEmail).delete();
       }
 
       async function uploadAssetPhoto(assetId, file, meta = {}, assetKind = "recycle") {
@@ -2399,15 +2674,91 @@
         elements.signOutButton.hidden = !signedIn;
         elements.userChip.hidden = !signedIn;
         elements.userChip.textContent = signedIn
-          ? state.user.displayName || state.user.email?.split("@")[0] || "已登入"
+          ? getOperatorName(state.user) || state.user.email?.split("@")[0] || "已登入"
           : "";
-        elements.userChip.title = signedIn ? state.user.email || state.user.displayName || "" : "";
+        elements.userChip.title = signedIn ? state.user.email || getOperatorName(state.user) || "" : "";
         elements.authRequiredTargets.forEach((item) => {
           item.disabled = !signedIn;
         });
         elements.caseDeleteButton.disabled = !signedIn || !getSelectedCase();
         elements.uploadMatchedButton.disabled =
           !signedIn || !state.batchQueue.some((item) => item.assetId && !item.uploaded);
+      }
+
+      function resetAllowedUserForm() {
+        elements.allowedUserForm?.reset();
+        elements.allowedUserId.value = "";
+        state.selectedAllowedUserEmail = "";
+        elements.allowedUserDeleteButton.disabled = true;
+      }
+
+      function fillAllowedUserForm(entry) {
+        if (!entry) {
+          resetAllowedUserForm();
+          return;
+        }
+        state.selectedAllowedUserEmail = entry.email;
+        elements.allowedUserId.value = entry.email;
+        elements.allowedUserEmail.value = entry.email;
+        elements.allowedUserName.value = entry.name || "";
+        elements.allowedUserDeleteButton.disabled = entry.email === ADMIN_EMAIL;
+      }
+
+      function renderAllowedUserTable() {
+        const entries = normalizeAllowedUserRecords([
+          ...state.allowedUsers,
+          { email: ADMIN_EMAIL, name: getAllowedUserEntry(ADMIN_EMAIL)?.name || "" },
+        ]);
+        if (!entries.length) {
+          elements.allowedUserTableBody.innerHTML = '<tr><td colspan="4" class="muted-cell">尚未設定可登入帳號。</td></tr>';
+          return;
+        }
+        elements.allowedUserTableBody.innerHTML = entries
+          .map((entry) => {
+            const isAdmin = entry.email === ADMIN_EMAIL;
+            const displayName = entry.name || entry.email.split("@")[0];
+            return `
+              <tr>
+                <td>${entry.email}</td>
+                <td>${escapeHtml(displayName)}</td>
+                <td>${isAdmin ? "管理員" : "已開通"}</td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" data-action="edit-allowed-user" data-email="${entry.email}">編輯</button>
+                    ${isAdmin ? "" : `<button type="button" data-action="delete-allowed-user" data-email="${entry.email}">移除</button>`}
+                  </div>
+                </td>
+              </tr>
+            `;
+          })
+          .join("");
+      }
+
+      function renderSettingsView() {
+        const signedIn = Boolean(state.user);
+        const operatorName = signedIn ? getOperatorName(state.user) : "尚未登入";
+        const roleLabel = !signedIn ? "訪客" : isAdminUser(state.user) ? "管理員" : "已開通";
+        elements.settingsAccountName.textContent = operatorName;
+        elements.settingsAccountEmail.textContent = signedIn
+          ? state.user.email || "未提供 Email"
+          : "請先登入 Google 帳號。";
+        elements.settingsRolePill.textContent = roleLabel;
+        elements.settingsAdminPanel.hidden = !signedIn || !isAdminUser(state.user);
+        elements.settingsAdminNote.hidden = !signedIn ? false : isAdminUser(state.user);
+        if (!signedIn) {
+          elements.settingsAdminNote.textContent = "登入後可查看帳號與權限設定。";
+        } else if (!isAdminUser(state.user)) {
+          elements.settingsAdminNote.textContent = "只有管理員可以設定可登入帳號。";
+        }
+        if (signedIn && isAdminUser(state.user)) {
+          renderAllowedUserTable();
+          if (state.selectedAllowedUserEmail) {
+            fillAllowedUserForm(getAllowedUserEntry(state.selectedAllowedUserEmail) || state.allowedUsers.find((item) =>
+              item.email === normalizeEmail(state.selectedAllowedUserEmail)));
+          } else {
+            resetAllowedUserForm();
+          }
+        }
       }
 
       function getAssetCollection(assetKind = state.assetDataset) {
@@ -3250,7 +3601,7 @@
           elements.loanPerson.readOnly = false;
           return;
         }
-        elements.loanPerson.value = state.user.displayName || state.user.email || "";
+        elements.loanPerson.value = getOperatorName(state.user) || state.user.email || "";
         elements.loanPerson.readOnly = true;
       }
 
@@ -3493,6 +3844,7 @@
         renderCaseSearchState();
         renderCasePreview();
         renderCaseTable();
+        renderSettingsView();
         renderSingleInventoryResult();
         renderBatchQueue();
         populateAssetCodeOptions();
@@ -3522,6 +3874,31 @@
           updateSyncBadge("從 Firebase 同步中...", "loading");
         }
         try {
+          let allowedUsers = [];
+          if (isAdminUser(state.user)) {
+            allowedUsers = normalizeAllowedUserRecords(await listAllowedUsers());
+          } else {
+            try {
+              const ownAllowedUser = await getAllowedUserRecord(state.user.email);
+              allowedUsers = normalizeAllowedUserRecords(ownAllowedUser ? [ownAllowedUser] : []);
+            } catch (error) {
+              if (isPermissionDeniedError(error)) {
+                await signOutUser({ suppressAutoLogin: true });
+                updateSyncBadge("此 Gmail 尚未開通", "error");
+                renderAll();
+                return;
+              }
+              throw error;
+            }
+          }
+          state.allowedUsers = allowedUsers;
+          if (!isAuthorizedUser(state.user)) {
+            await signOutUser({ suppressAutoLogin: true });
+            updateSyncBadge("此 Gmail 尚未開通", "error");
+            renderAll();
+            return;
+          }
+          syncCurrentUserProfile();
           const [recycleAssets, projectAssets, loans, cases] = await Promise.all([
             listAssets("recycle"),
             listAssets("project"),
@@ -4364,11 +4741,11 @@
               assetCode: asset.code,
               assetName: asset.name,
               action: elements.loanAction.value,
-              person: normalizeText(elements.loanPerson.value),
+              person: getOperatorName(state.user) || normalizeText(elements.loanPerson.value),
               unit: normalizeText(elements.loanUnit.value),
               date: elements.loanDate.value,
               note: normalizeText(elements.loanNote.value),
-              verifiedByName: state.user?.displayName || "",
+              verifiedByName: getOperatorName(state.user),
               verifiedByEmail: state.user?.email || "",
               targetCaseIds: selectedCases.map((entry) => entry.id),
               targetCaseLabels: selectedCases.map((entry) => `${entry.caseCode || "未填編號"}｜${entry.name || "未填姓名"}`),
@@ -4441,6 +4818,57 @@
         } catch (error) {
           console.error(error);
           updateSyncBadge("刪除對象資料失敗", "error");
+        }
+      }
+
+      async function handleAllowedUserSave(event) {
+        event.preventDefault();
+        if (!state.user || !isAdminUser(state.user)) return;
+        const email = normalizeEmail(elements.allowedUserEmail.value);
+        const name = normalizeText(elements.allowedUserName.value);
+        if (!email || !/^[^@\s]+@gmail\.com$/i.test(email)) {
+          updateSyncBadge("請輸入有效的 Gmail", "warn");
+          return;
+        }
+        if (!name) {
+          updateSyncBadge("請輸入人員名稱", "warn");
+          return;
+        }
+        const existing = state.allowedUsers.find((item) => item.email === email);
+        const record = {
+          id: email,
+          email,
+          name,
+          createdAt: existing?.createdAt || new Date().toISOString(),
+        };
+        updateSyncBadge("儲存帳號設定中...", "loading");
+        try {
+          await upsertAllowedUsers([record]);
+          state.selectedAllowedUserEmail = email;
+          await refreshRemoteData({ quiet: true });
+          updateSyncBadge("帳號設定已更新", "success");
+          fillAllowedUserForm(getAllowedUserEntry(email));
+        } catch (error) {
+          console.error(error);
+          updateSyncBadge("帳號設定儲存失敗", "error");
+        }
+      }
+
+      async function handleAllowedUserDelete(email = state.selectedAllowedUserEmail) {
+        if (!state.user || !isAdminUser(state.user)) return;
+        const normalizedEmail = normalizeEmail(email);
+        if (!normalizedEmail || normalizedEmail === ADMIN_EMAIL) return;
+        if (!window.confirm(`確定要移除 ${normalizedEmail} 的登入權限嗎？`)) return;
+        updateSyncBadge("移除帳號中...", "loading");
+        try {
+          await deleteAllowedUser(normalizedEmail);
+          state.selectedAllowedUserEmail = "";
+          await refreshRemoteData({ quiet: true });
+          resetAllowedUserForm();
+          updateSyncBadge("帳號已移除", "success");
+        } catch (error) {
+          console.error(error);
+          updateSyncBadge("移除帳號失敗", "error");
         }
       }
 
@@ -4526,7 +4954,7 @@
         elements.signInButton.addEventListener("click", async () => {
           try {
             updateSyncBadge("Google 授權與登入中...", "loading");
-            const user = await signInWithGoogle();
+            const user = await triggerGoogleSignIn();
             if (user) {
               updateSyncBadge("已登入，可同步資料並上傳 Google Drive", "success");
               await refreshRemoteData();
@@ -4546,6 +4974,22 @@
         });
 
         elements.refreshButton.addEventListener("click", refreshRemoteData);
+        elements.allowedUserForm.addEventListener("submit", handleAllowedUserSave);
+        elements.allowedUserResetButton.addEventListener("click", () => {
+          resetAllowedUserForm();
+        });
+        elements.allowedUserDeleteButton.addEventListener("click", () => handleAllowedUserDelete());
+        elements.allowedUserTableBody.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-action]");
+          if (!button) return;
+          const email = normalizeEmail(button.dataset.email);
+          if (button.dataset.action === "edit-allowed-user") {
+            fillAllowedUserForm(getAllowedUserEntry(email) || state.allowedUsers.find((item) => item.email === email));
+          }
+          if (button.dataset.action === "delete-allowed-user") {
+            handleAllowedUserDelete(email);
+          }
+        });
         elements.recycleImportInput.addEventListener("change", handleRecycleImport);
         elements.recycleOpenAssetsButton.addEventListener("click", () => {
           if (elements.recycleImportInput.disabled) return;
@@ -4759,7 +5203,9 @@
         bindEvents();
         applySidebarState();
         renderAll();
-        updateSyncBadge("請先按「Google / Firebase 登入」", "idle");
+        if (!shouldAutoSignIn()) {
+          updateSyncBadge("請先登入 Google / Firebase", "idle");
+        }
       }
 
       init();
