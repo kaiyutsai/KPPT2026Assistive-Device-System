@@ -961,6 +961,50 @@
         margin-bottom: 18px;
       }
 
+      .word-select-toolbar {
+        display: grid;
+        gap: 14px;
+      }
+
+      .word-select-list {
+        display: grid;
+        gap: 12px;
+        max-height: min(56vh, 520px);
+        overflow: auto;
+        padding-right: 4px;
+      }
+
+      .word-select-item {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        align-items: start;
+        padding: 14px 16px;
+        border-radius: 16px;
+        border: 1px solid rgba(31, 54, 120, 0.1);
+        background: rgba(255, 255, 255, 0.94);
+      }
+
+      .word-select-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+      }
+
+      .word-select-item h4 {
+        margin: 0 0 6px;
+      }
+
+      .word-select-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .word-select-item p {
+        margin: 0;
+      }
+
       .asset-filter-shell {
         display: flex;
         flex-wrap: wrap;
@@ -1416,6 +1460,15 @@
         justify-content: flex-end;
       }
 
+      .auth-gate-hint {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(255, 120, 120, 0.08);
+        color: #b03a48;
+        font-size: 0.92rem;
+        line-height: 1.6;
+      }
+
       .form-modal::backdrop {
         background: rgba(7, 11, 25, 0.42);
         backdrop-filter: blur(6px);
@@ -1722,6 +1775,7 @@
                   </div>
                   <div class="toolbar">
                     <button id="download-word-btn" class="ghost-btn">下載 Word 清單</button>
+                    <button id="download-selected-word-btn" class="ghost-btn">勾選下載</button>
                     <button id="new-asset-btn" class="ghost-btn">新增項目</button>
                   </div>
                 </div>
@@ -2012,6 +2066,7 @@
           <h3>請先登入 Google 帳號</h3>
           <p>第一次進入系統時，先按一下 Google 登入，之後會記住登入狀態。</p>
         </div>
+        <p id="auth-gate-hint" class="auth-gate-hint" hidden></p>
         <div class="auth-gate-actions">
           <button id="auth-gate-sign-in-btn" type="button" class="primary-btn">Google 登入</button>
         </div>
@@ -2022,6 +2077,29 @@
       <button id="photo-modal-close" class="ghost-btn modal-close" type="button">關閉</button>
       <img id="photo-modal-image" alt="輔具照片預覽" />
       <div id="photo-modal-meta" class="photo-modal-meta"></div>
+    </dialog>
+
+    <dialog id="word-select-modal" class="form-modal">
+      <div class="dialog-head">
+        <div class="dialog-head-copy">
+          <p class="eyebrow">Word 清單</p>
+          <h3>勾選指定輔具後下載標籤</h3>
+        </div>
+        <button id="word-select-close-btn" type="button" class="ghost-btn">關閉</button>
+      </div>
+      <div class="word-select-toolbar">
+        <input id="word-select-search" class="field" type="search" placeholder="搜尋編號、名稱、品牌、備註" />
+        <div id="word-select-category-tabs" class="filter-tab-row"></div>
+        <div class="toolbar">
+          <button id="word-select-all-btn" type="button" class="ghost-btn">全選目前清單</button>
+          <button id="word-select-clear-btn" type="button" class="ghost-btn">清除勾選</button>
+          <span id="word-select-meta" class="muted-note">已勾選 0 筆</span>
+        </div>
+      </div>
+      <div id="word-select-list" class="word-select-list empty-state">尚未載入可選清單。</div>
+      <div class="form-actions">
+        <button id="word-select-download-btn" type="button" class="primary-btn">下載勾選 Word</button>
+      </div>
     </dialog>
 
     <dialog id="loan-modal" class="form-modal loan-modal">
@@ -2268,6 +2346,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
@@ -2300,6 +2379,7 @@
       const DRIVE_ACCESS_TOKEN_KEY = "kppt-drive-access-token";
       const DRIVE_ACCESS_TOKEN_EXPIRY_KEY = "kppt-drive-access-token-expiry";
       const PROJECT_NOTE_PHOTO_MANIFEST_PATH = "data/assistive-note-photo-manifest.json";
+      const WORD_LABEL_TEMPLATE_PATH = "資料區/(13)US4462.docx";
 
       const DRIVE_CONFIG = {
         clientId: "658513065345-kst6ahnsauvlu4dq2f2jq6vqp2p9gm3n.apps.googleusercontent.com",
@@ -2348,7 +2428,11 @@
         selectedAllowedUserEmail: "",
         selectedRecycleCounty: "",
         selectedRecycleSection: "list",
+        wordSelectSearch: "",
+        wordSelectCategory: "",
+        selectedWordAssetIds: [],
         authInProgress: false,
+        authGateMessage: "",
         inventoryActionMode: "photo",
         sidebarOpen: window.innerWidth > 960,
         currentView: "loans",
@@ -2418,6 +2502,7 @@
         signOutButton: document.querySelector("#sign-out-btn"),
         authGateModal: document.querySelector("#auth-gate-modal"),
         authGateSignInButton: document.querySelector("#auth-gate-sign-in-btn"),
+        authGateHint: document.querySelector("#auth-gate-hint"),
         userChip: document.querySelector("#user-chip"),
         refreshButton: document.querySelector("#refresh-btn"),
         syncBadge: document.querySelector("#sync-badge"),
@@ -2463,8 +2548,18 @@
         assetCategoryFilter: document.querySelector("#asset-category-filter"),
         assetCountyFilter: document.querySelector("#asset-county-filter"),
         downloadWordButton: document.querySelector("#download-word-btn"),
+        downloadSelectedWordButton: document.querySelector("#download-selected-word-btn"),
         newAssetButton: document.querySelector("#new-asset-btn"),
         assetTableBody: document.querySelector("#asset-table-body"),
+        wordSelectModal: document.querySelector("#word-select-modal"),
+        wordSelectCloseButton: document.querySelector("#word-select-close-btn"),
+        wordSelectSearch: document.querySelector("#word-select-search"),
+        wordSelectCategoryTabs: document.querySelector("#word-select-category-tabs"),
+        wordSelectAllButton: document.querySelector("#word-select-all-btn"),
+        wordSelectClearButton: document.querySelector("#word-select-clear-btn"),
+        wordSelectMeta: document.querySelector("#word-select-meta"),
+        wordSelectList: document.querySelector("#word-select-list"),
+        wordSelectDownloadButton: document.querySelector("#word-select-download-btn"),
         assetModal: document.querySelector("#asset-modal"),
         assetModalClose: document.querySelector("#asset-modal-close"),
         assetFormTitle: document.querySelector("#asset-form-title"),
@@ -2868,6 +2963,31 @@
           !sessionStorage.getItem(AUTO_LOGIN_SESSION_KEY);
       }
 
+      function setAuthGateMessage(message = "") {
+        state.authGateMessage = normalizeText(message);
+        if (!elements.authGateHint) return;
+        elements.authGateHint.textContent = state.authGateMessage;
+        elements.authGateHint.hidden = !state.authGateMessage;
+      }
+
+      function getFriendlyAuthErrorMessage(error) {
+        const rawMessage = String(error?.message || error?.code || "");
+        const message = rawMessage.toLowerCase();
+        if (message.includes("missing initial state")) {
+          return "目前這個手機瀏覽器無法保留 Google 登入狀態。請點分享後改用 Safari 或 Chrome 直接開啟網站再登入。";
+        }
+        if (message.includes("popup blocked") || message.includes("popup_blocked") || message.includes("popup-blocked")) {
+          return "瀏覽器擋住登入視窗，請允許彈出視窗，或改用 Safari / Chrome 直接開啟網站。";
+        }
+        if (message.includes("popup closed") || message.includes("popup_closed") || message.includes("popup-closed")) {
+          return "你已關閉 Google 登入視窗，請再按一次 Google 登入。";
+        }
+        if (message.includes("operation-not-supported-in-this-environment")) {
+          return "目前這個手機瀏覽器不支援直接登入，請改用 Safari 或 Chrome 開啟網站。";
+        }
+        return rawMessage || "Google / Firebase 登入失敗，請再試一次。";
+      }
+
       function openAuthGateModal() {
         if (!elements.authGateModal || elements.authGateModal.open || state.user) return;
         elements.authGateModal.showModal();
@@ -3084,10 +3204,13 @@
           if (result?.user) {
             state.user = mapFirebaseUser(result.user);
             sessionStorage.removeItem(AUTO_LOGIN_SESSION_KEY);
+            setAuthGateMessage("");
           }
         } catch (error) {
           console.error(error);
           sessionStorage.removeItem(AUTO_LOGIN_SESSION_KEY);
+          setAuthGateMessage(getFriendlyAuthErrorMessage(error));
+          updateSyncBadge("Google 登入未完成", "error");
         }
         if (!state.user) {
           sessionStorage.removeItem(AUTO_LOGIN_SESSION_KEY);
@@ -3138,6 +3261,7 @@
               try {
                 localStorage.removeItem(AUTO_LOGIN_DISABLED_KEY);
                 sessionStorage.removeItem(AUTO_LOGIN_SESSION_KEY);
+                setAuthGateMessage("");
                 closeAuthGateModal();
                 if (!state.accessToken) {
                   await restoreDriveAccessTokenFromRedirect();
@@ -3163,19 +3287,31 @@
         const auth = await ensureFirebaseAuthPersistence();
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: "select_account" });
-        const useRedirect = preferRedirect || window.matchMedia("(max-width: 768px)").matches;
-        if (useRedirect) {
+        if (preferRedirect) {
           sessionStorage.setItem(AUTO_LOGIN_SESSION_KEY, "1");
           await auth.signInWithRedirect(provider);
           return null;
         }
-        const result = await auth.signInWithPopup(provider);
-        const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
-        state.user = mapFirebaseUser(result.user);
-        state.accessToken = credential?.accessToken || "";
-        state.driveAccessTokenExpiresAt = 0;
-        persistDriveAccessToken(state.accessToken);
-        return state.user;
+        try {
+          const result = await auth.signInWithPopup(provider);
+          const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+          state.user = mapFirebaseUser(result.user);
+          state.accessToken = credential?.accessToken || "";
+          state.driveAccessTokenExpiresAt = 0;
+          persistDriveAccessToken(state.accessToken);
+          return state.user;
+        } catch (error) {
+          const message = String(error?.message || error?.code || "").toLowerCase();
+          if (
+            message.includes("popup blocked") ||
+            message.includes("popup_blocked") ||
+            message.includes("popup-blocked") ||
+            message.includes("operation-not-supported-in-this-environment")
+          ) {
+            throw new Error(getFriendlyAuthErrorMessage(error));
+          }
+          throw error;
+        }
       }
 
       async function triggerGoogleSignIn({ auto = false } = {}) {
@@ -3194,6 +3330,7 @@
 
       async function handleGoogleSignIn() {
         try {
+          setAuthGateMessage("");
           updateSyncBadge("Google 授權與登入中...", "loading");
           const user = await triggerGoogleSignIn();
           if (user) {
@@ -3205,7 +3342,12 @@
           }
         } catch (error) {
           console.error(error);
-          updateSyncBadge(error.message || "Google / Firebase 登入失敗", "error");
+          const message = getFriendlyAuthErrorMessage(error);
+          setAuthGateMessage(message);
+          updateSyncBadge(message, "error");
+          if (!elements.authGateModal?.open) {
+            openAuthGateModal();
+          }
         }
       }
 
@@ -4616,6 +4758,156 @@
         });
       }
 
+      function getWordSelectableAssets() {
+        const searchValue = normalizeText(state.wordSelectSearch).toLowerCase();
+        const category = normalizeText(state.wordSelectCategory);
+        return getDecoratedAssets().filter((asset) => {
+          const haystack = [
+            asset.code,
+            asset.name,
+            asset.category,
+            asset.brand,
+            asset.model,
+            asset.location,
+            asset.remarks,
+            asset.description,
+          ]
+            .map((value) => normalizeText(value).toLowerCase())
+            .join(" ");
+          return (!searchValue || haystack.includes(searchValue)) &&
+            (!category || normalizeText(asset.category) === category);
+        });
+      }
+
+      function renderWordSelectCategoryTabs() {
+        if (!elements.wordSelectCategoryTabs) return;
+        const categories = [...new Set(getDecoratedAssets().map((asset) => normalizeText(asset.category)).filter(Boolean))];
+        const current = normalizeText(state.wordSelectCategory);
+        elements.wordSelectCategoryTabs.innerHTML = [
+          `<button type="button" class="filter-tab ${current ? "" : "active"}" data-word-category="">全部類別</button>`,
+          ...categories.map(
+            (category) =>
+              `<button type="button" class="filter-tab ${current === category ? "active" : ""}" data-word-category="${escapeHtml(category)}">${escapeHtml(category)}</button>`,
+          ),
+        ].join("");
+      }
+
+      function renderWordSelectModal() {
+        if (!elements.wordSelectList) return;
+        renderWordSelectCategoryTabs();
+        const assets = sortAssetsForLabelExport(getWordSelectableAssets());
+        const selectedCount = state.selectedWordAssetIds.length;
+        elements.wordSelectMeta.textContent = `已勾選 ${selectedCount} 筆`;
+        if (!assets.length) {
+          elements.wordSelectList.className = "word-select-list empty-state";
+          elements.wordSelectList.textContent = "目前沒有符合條件的輔具可勾選。";
+          elements.wordSelectDownloadButton.disabled = selectedCount === 0;
+          return;
+        }
+        elements.wordSelectList.className = "word-select-list";
+        elements.wordSelectList.innerHTML = assets
+          .map((asset) => {
+            const checked = state.selectedWordAssetIds.includes(asset.id);
+            const metaCell = state.assetDataset === "project"
+              ? [asset.brand, asset.model].filter(Boolean).join(" / ") || "-"
+              : asset.county || "-";
+            return `
+              <label class="word-select-item">
+                <input type="checkbox" data-word-asset-id="${asset.id}" ${checked ? "checked" : ""} />
+                <div>
+                  <h4>${escapeHtml(asset.code || "未填")}｜${escapeHtml(asset.name || "未命名")}</h4>
+                  <p>${escapeHtml(asset.category || "-")}</p>
+                  <div class="word-select-meta">
+                    <span class="chip">${escapeHtml(metaCell)}</span>
+                    <span class="chip">${escapeHtml(formatAssetStatusLabel(asset.status))}</span>
+                  </div>
+                </div>
+              </label>
+            `;
+          })
+          .join("");
+        elements.wordSelectDownloadButton.disabled = selectedCount === 0;
+      }
+
+      function openWordSelectModal() {
+        state.wordSelectSearch = normalizeText(elements.assetSearch?.value);
+        state.wordSelectCategory = normalizeText(elements.assetCategoryFilter?.value);
+        state.selectedWordAssetIds = [];
+        if (elements.wordSelectSearch) {
+          elements.wordSelectSearch.value = state.wordSelectSearch;
+        }
+        renderWordSelectModal();
+        if (!elements.wordSelectModal.open) {
+          elements.wordSelectModal.showModal();
+        }
+      }
+
+      function closeWordSelectModal() {
+        if (elements.wordSelectModal?.open) {
+          elements.wordSelectModal.close();
+        }
+      }
+
+      function toggleWordAssetSelection(assetId, selected) {
+        if (!assetId) return;
+        if (selected) {
+          state.selectedWordAssetIds = [...new Set([...state.selectedWordAssetIds, assetId])];
+        } else {
+          state.selectedWordAssetIds = state.selectedWordAssetIds.filter((id) => id !== assetId);
+        }
+        renderWordSelectModal();
+      }
+
+      function selectAllVisibleWordAssets() {
+        const ids = getWordSelectableAssets().map((asset) => asset.id).filter(Boolean);
+        state.selectedWordAssetIds = [...new Set([...state.selectedWordAssetIds, ...ids])];
+        renderWordSelectModal();
+      }
+
+      function clearWordAssetSelection() {
+        state.selectedWordAssetIds = [];
+        renderWordSelectModal();
+      }
+
+      async function downloadSelectedWordList() {
+        const selectedAssets = sortAssetsForLabelExport(
+          getDecoratedAssets().filter((asset) => state.selectedWordAssetIds.includes(asset.id)),
+        );
+        if (!selectedAssets.length) {
+          updateSyncBadge("請先勾選要下載的輔具", "warn");
+          return;
+        }
+        const title = `${getAssetDatasetConfig().label} 勾選 QR 清單`;
+        await downloadWordList(selectedAssets, {
+          title,
+          fileName: `${title}.docx`,
+        });
+        closeWordSelectModal();
+      }
+
+      function sortAssetsForLabelExport(records = []) {
+        const collator = new Intl.Collator("zh-Hant", {
+          numeric: true,
+          sensitivity: "base",
+        });
+        return [...records].sort((a, b) => {
+          const categoryCompare = collator.compare(
+            normalizeText(a.category || ""),
+            normalizeText(b.category || ""),
+          );
+          if (categoryCompare !== 0) return categoryCompare;
+          const codeCompare = collator.compare(
+            normalizeAssetCode(a.code || ""),
+            normalizeAssetCode(b.code || ""),
+          );
+          if (codeCompare !== 0) return codeCompare;
+          return collator.compare(
+            normalizeText(a.name || ""),
+            normalizeText(b.name || ""),
+          );
+        });
+      }
+
       function renderAssetTable() {
         if (!isViewActive("assets")) return;
         const assets = getVisibleAssets();
@@ -4692,7 +4984,7 @@
         new window.QRious({
           element: canvas,
           value: normalizeText(code),
-          size: 110,
+          size: 96,
           foreground: "#111111",
           background: "#ffffff",
           level: "H",
@@ -4700,71 +4992,352 @@
         return canvas.toDataURL("image/png");
       }
 
-      function downloadWordList(assetsInput = null, options = {}) {
-        const assets = Array.isArray(assetsInput) ? assetsInput : getVisibleAssets();
+      function escapeXml(value = "") {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+      }
+
+      function dataUrlToUint8Array(dataUrl = "") {
+        const normalized = normalizeText(dataUrl);
+        if (!normalized.includes(",")) return new Uint8Array();
+        const base64 = normalized.split(",")[1] || "";
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) {
+          bytes[index] = binary.charCodeAt(index);
+        }
+        return bytes;
+      }
+
+      function buildWordLabelTextLines(asset = {}) {
+        return [
+          { text: `編號：${normalizeText(asset.code) || "-"}  年份：${normalizeText(asset.purchaseYear) || "-"}`, bold: false },
+          { text: `品名：${normalizeText(asset.name) || "-"}`, bold: true },
+          { text: `單價：${normalizeText(asset.unitPrice) || "-"}`, bold: false },
+          { text: `品牌：${normalizeText(asset.brand) || "-"}`, bold: false },
+          { text: `型號/尺寸：${normalizeText(asset.model) || "-"}`, bold: false },
+        ];
+      }
+
+      function buildWordLabelRunXml(text = "", { bold = false } = {}) {
+        return `
+          <w:r>
+            <w:rPr>
+              <w:rFonts w:ascii="標楷體" w:hAnsi="標楷體" w:eastAsia="標楷體"/>
+              ${bold ? "<w:b/><w:bCs/>" : ""}
+              <w:sz w:val="22"/>
+              <w:szCs w:val="22"/>
+            </w:rPr>
+            <w:t xml:space="preserve">${escapeXml(text)}</w:t>
+          </w:r>
+        `;
+      }
+
+      function buildWordLabelParagraphXml(text = "", options = {}) {
+        return `
+          <w:p>
+            <w:pPr>
+              <w:ind w:left="0" w:right="0"/>
+              <w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="auto"/>
+              <w:contextualSpacing/>
+            </w:pPr>
+            ${buildWordLabelRunXml(text, options)}
+          </w:p>
+        `;
+      }
+
+      function buildWordQrInnerCellXml(relId = "", imageIndex = 1) {
+        return `
+          <w:tc>
+            <w:tcPr>
+              <w:tcW w:w="980" w:type="dxa"/>
+              <w:vAlign w:val="top"/>
+            </w:tcPr>
+            <w:p>
+              <w:pPr>
+                <w:jc w:val="center"/>
+                <w:spacing w:before="0" w:after="0"/>
+              </w:pPr>
+              <w:r>
+                <w:drawing>
+                  <wp:inline distT="0" distB="0" distL="0" distR="0" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                    <wp:extent cx="600000" cy="600000"/>
+                    <wp:docPr id="${imageIndex}" name="QR ${imageIndex}"/>
+                    <wp:cNvGraphicFramePr>
+                      <a:graphicFrameLocks noChangeAspect="1"/>
+                    </wp:cNvGraphicFramePr>
+                    <a:graphic>
+                      <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                        <pic:pic>
+                          <pic:nvPicPr>
+                            <pic:cNvPr id="0" name="qr-${imageIndex}.png"/>
+                            <pic:cNvPicPr/>
+                          </pic:nvPicPr>
+                          <pic:blipFill>
+                            <a:blip r:embed="${escapeXml(relId)}"/>
+                            <a:stretch><a:fillRect/></a:stretch>
+                          </pic:blipFill>
+                          <pic:spPr>
+                            <a:xfrm>
+                              <a:off x="0" y="0"/>
+                              <a:ext cx="600000" cy="600000"/>
+                            </a:xfrm>
+                            <a:prstGeom prst="rect"/>
+                          </pic:spPr>
+                        </pic:pic>
+                      </a:graphicData>
+                    </a:graphic>
+                  </wp:inline>
+                </w:drawing>
+              </w:r>
+            </w:p>
+          </w:tc>
+        `;
+      }
+
+      function buildWordInfoInnerCellXml(asset = {}) {
+        const paragraphs = buildWordLabelTextLines(asset)
+          .map((line) => buildWordLabelParagraphXml(line.text, { bold: line.bold }))
+          .join("");
+        return `
+          <w:tc>
+            <w:tcPr>
+              <w:tcW w:w="4484" w:type="dxa"/>
+              <w:vAlign w:val="top"/>
+            </w:tcPr>
+            ${paragraphs}
+          </w:tc>
+        `;
+      }
+
+      function buildWordEmptyLabelCellXml() {
+        return `
+          <w:tc>
+            <w:tcPr>
+              <w:tcW w:w="5700" w:type="dxa"/>
+              <w:tcMar>
+                <w:left w:w="520" w:type="dxa"/>
+                <w:right w:w="244" w:type="dxa"/>
+              </w:tcMar>
+            </w:tcPr>
+            <w:p>
+              <w:pPr>
+                <w:ind w:left="520" w:right="244"/>
+              </w:pPr>
+            </w:p>
+          </w:tc>
+        `;
+      }
+
+      function buildWordLabelCellXml(asset = null, relId = "", imageIndex = 1) {
+        if (!asset) return buildWordEmptyLabelCellXml();
+        return `
+          <w:tc>
+            <w:tcPr>
+              <w:tcW w:w="5700" w:type="dxa"/>
+              <w:tcMar>
+                <w:left w:w="520" w:type="dxa"/>
+                <w:right w:w="244" w:type="dxa"/>
+              </w:tcMar>
+            </w:tcPr>
+            <w:tbl>
+              <w:tblPr>
+                <w:tblW w:w="5464" w:type="dxa"/>
+                <w:tblBorders>
+                  <w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+                  <w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+                  <w:bottom w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+                  <w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+                  <w:insideH w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+                  <w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+                </w:tblBorders>
+                <w:tblLayout w:type="fixed"/>
+                <w:tblCellMar>
+                  <w:left w:w="0" w:type="dxa"/>
+                  <w:right w:w="0" w:type="dxa"/>
+                  <w:top w:w="0" w:type="dxa"/>
+                  <w:bottom w:w="0" w:type="dxa"/>
+                </w:tblCellMar>
+                <w:tblLook w:val="0000" w:firstRow="0" w:lastRow="0" w:firstColumn="0" w:lastColumn="0" w:noHBand="0" w:noVBand="0"/>
+              </w:tblPr>
+              <w:tblGrid>
+                <w:gridCol w:w="980"/>
+                <w:gridCol w:w="4484"/>
+              </w:tblGrid>
+              <w:tr>
+                <w:trPr>
+                  <w:trHeight w:hRule="atLeast" w:val="1850"/>
+                </w:trPr>
+                ${buildWordQrInnerCellXml(relId, imageIndex)}
+                ${buildWordInfoInnerCellXml(asset)}
+              </w:tr>
+            </w:tbl>
+          </w:tc>
+        `;
+      }
+
+      function buildWordLabelDocumentXml(assets = [], imageRels = []) {
+        const rows = [];
+        const pageCapacity = 14;
+        const pageCount = Math.max(1, Math.ceil(assets.length / pageCapacity));
+        for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+          rows.push(`
+            <w:tr w:rsidR="00DA1990">
+              <w:tblPrEx>
+                <w:tblCellMar>
+                  <w:top w:w="0" w:type="dxa"/>
+                  <w:bottom w:w="0" w:type="dxa"/>
+                </w:tblCellMar>
+              </w:tblPrEx>
+              <w:trPr>
+                <w:cantSplit/>
+                <w:trHeight w:hRule="exact" w:val="2103"/>
+              </w:trPr>
+              ${buildWordEmptyLabelCellXml()}
+              ${buildWordEmptyLabelCellXml()}
+            </w:tr>
+          `);
+          for (let rowIndex = 0; rowIndex < 7; rowIndex += 1) {
+            const leftIndex = pageIndex * pageCapacity + rowIndex * 2;
+            const rightIndex = leftIndex + 1;
+            const leftAsset = assets[leftIndex] || null;
+            const rightAsset = assets[rightIndex] || null;
+            const leftCell = buildWordLabelCellXml(leftAsset, imageRels[leftIndex]?.relId || "", leftIndex + 1);
+            const rightCell = buildWordLabelCellXml(rightAsset, imageRels[rightIndex]?.relId || "", rightIndex + 1);
+            rows.push(`
+              <w:tr w:rsidR="00DA1990">
+                <w:tblPrEx>
+                  <w:tblCellMar>
+                    <w:top w:w="0" w:type="dxa"/>
+                    <w:bottom w:w="0" w:type="dxa"/>
+                  </w:tblCellMar>
+                </w:tblPrEx>
+                <w:trPr>
+                  <w:cantSplit/>
+                  <w:trHeight w:hRule="exact" w:val="2103"/>
+                </w:trPr>
+                ${leftCell}
+                ${rightCell}
+              </w:tr>
+            `);
+          }
+        }
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="w14 wp14">
+  <w:body>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="a3"/>
+        <w:tblW w:w="0" w:type="auto"/>
+        <w:tblInd w:w="500" w:type="dxa"/>
+        <w:tblBorders>
+          <w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+          <w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+          <w:bottom w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+          <w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+          <w:insideH w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+          <w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+        </w:tblBorders>
+        <w:tblLayout w:type="fixed"/>
+        <w:tblCellMar>
+          <w:left w:w="15" w:type="dxa"/>
+          <w:right w:w="15" w:type="dxa"/>
+        </w:tblCellMar>
+        <w:tblLook w:val="0000" w:firstRow="0" w:lastRow="0" w:firstColumn="0" w:lastColumn="0" w:noHBand="0" w:noVBand="0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="5700"/>
+        <w:gridCol w:w="5700"/>
+      </w:tblGrid>
+      ${rows.join("")}
+    </w:tbl>
+    <w:p w:rsidR="00DA1990" w:rsidRPr="00DA1990" w:rsidRDefault="00DA1990" w:rsidP="00DA1990">
+      <w:pPr>
+        <w:ind w:left="244" w:right="244"/>
+        <w:rPr><w:vanish/></w:rPr>
+      </w:pPr>
+    </w:p>
+    <w:sectPr w:rsidR="00DA1990" w:rsidRPr="00DA1990" w:rsidSect="00DA1990">
+      <w:type w:val="continuous"/>
+      <w:pgSz w:w="11905" w:h="16837"/>
+      <w:pgMar w:top="0" w:right="0" w:bottom="0" w:left="0" w:header="720" w:footer="720" w:gutter="0"/>
+      <w:paperSrc w:first="4" w:other="4"/>
+      <w:cols w:space="720"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+      }
+
+      function buildWordLabelRelationshipsXml(existingRelationshipsXml = "", imageRels = []) {
+        const closingTag = "</Relationships>";
+        const additions = imageRels
+          .map((item) => `<Relationship Id="${escapeXml(item.relId)}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${escapeXml(item.fileName)}"/>`)
+          .join("");
+        return existingRelationshipsXml.replace(closingTag, `${additions}${closingTag}`);
+      }
+
+      function ensureWordPngContentType(contentTypesXml = "") {
+        if (/Extension="png"/i.test(contentTypesXml)) return contentTypesXml;
+        return contentTypesXml.replace("</Types>", '<Default Extension="png" ContentType="image/png"/></Types>');
+      }
+
+      async function buildWordTemplateDocxBlob(assets = []) {
+        if (!window.JSZip) {
+          throw new Error("Word 模板模組尚未載入，請重新整理頁面再試");
+        }
+        const response = await fetch(encodeURI(WORD_LABEL_TEMPLATE_PATH));
+        if (!response.ok) {
+          throw new Error("無法讀取 Word 標籤模板");
+        }
+        const zip = await window.JSZip.loadAsync(await response.arrayBuffer());
+        const imageRels = assets.map((asset, index) => ({
+          relId: `rIdImage${index + 1}`,
+          fileName: `qr-${index + 1}.png`,
+          bytes: dataUrlToUint8Array(buildQrDataUrl(asset.code)),
+        }));
+        zip.file("word/document.xml", buildWordLabelDocumentXml(assets, imageRels));
+        const relsXml = await zip.file("word/_rels/document.xml.rels").async("string");
+        zip.file("word/_rels/document.xml.rels", buildWordLabelRelationshipsXml(relsXml, imageRels));
+        const contentTypesXml = await zip.file("[Content_Types].xml").async("string");
+        zip.file("[Content_Types].xml", ensureWordPngContentType(contentTypesXml));
+        imageRels.forEach((item) => {
+          zip.file(`word/media/${item.fileName}`, item.bytes);
+        });
+        return zip.generateAsync({
+          type: "blob",
+          mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
+      }
+
+      async function downloadWordList(assetsInput = null, options = {}) {
+        const assets = sortAssetsForLabelExport(
+          Array.isArray(assetsInput) ? assetsInput : getVisibleAssets(),
+        );
         if (assets.length === 0) {
           updateSyncBadge("目前沒有可下載的清單資料", "warn");
           return;
         }
         const title = options.title || `${getAssetDatasetConfig().label} QR 清單`;
-        const rows = assets
-          .map((asset) => {
-            const qrDataUrl = buildQrDataUrl(asset.code);
-            return `
-              <tr>
-                <td class="qr-col">${qrDataUrl ? `<img src="${qrDataUrl}" alt="${escapeHtml(asset.code)}" />` : ""}</td>
-                <td class="info-col">
-                  <div>編號：${escapeHtml(asset.code || "-")}</div>
-                  <div>物品名稱：${escapeHtml(asset.name || "-")}</div>
-                  <div>購買年份：${escapeHtml(asset.purchaseYear || "-")}</div>
-                  <div>單價：${escapeHtml(asset.unitPrice || "-")}</div>
-                  <div>品牌：${escapeHtml(asset.brand || "-")}</div>
-                  <div>型號/尺寸：${escapeHtml(asset.model || "-")}</div>
-                </td>
-              </tr>
-            `;
-          })
-          .join("");
+        const fileName = (options.fileName || `${title}.docx`).replace(/\.doc$/i, ".docx");
 
-        const html = `
-          <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
-            <head>
-              <meta charset="UTF-8" />
-              <title>${escapeHtml(title)}</title>
-              <style>
-                @page { size: A4; margin: 1.2cm; }
-                body { font-family: "Noto Sans TC", Arial, sans-serif; font-size: 11pt; }
-                h1 { font-size: 14pt; margin: 0 0 12pt; }
-                table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-                th, td { border: 1px solid #888; padding: 6pt; vertical-align: top; }
-                th { text-align: center; font-size: 11pt; }
-                .qr-col { width: 120pt; text-align: center; }
-                .qr-col img { width: 88pt; height: 88pt; }
-                .info-col div { margin-bottom: 2pt; }
-              </style>
-            </head>
-            <body>
-              <h1>${escapeHtml(title)}</h1>
-              <table>
-                <thead>
-                  <tr>
-                    <th>QR</th>
-                    <th>編號</th>
-                  </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-              </table>
-            </body>
-          </html>
-        `;
-
-        const blob = new Blob([`\ufeff${html}`], { type: "application/msword" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = options.fileName || `${title}.doc`;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1500);
+        try {
+          updateSyncBadge("正在建立 Word 標籤...", "loading");
+          const blob = await buildWordTemplateDocxBlob(assets);
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = fileName;
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 2000);
+          updateSyncBadge("Word 標籤已下載", "success");
+        } catch (error) {
+          console.error(error);
+          updateSyncBadge(error.message || "建立 Word 標籤失敗", "error");
+        }
       }
 
       function resetAssetForm() {
@@ -6907,7 +7480,7 @@
             const safeFileLabel = labelBase.replace(/[\\/:*?"<>|]/g, "-") || "新品項";
             downloadWordList([record], {
               title: `${labelBase} QR 標籤`,
-              fileName: `${safeFileLabel}_QR標籤.doc`,
+              fileName: `${safeFileLabel}_QR標籤.docx`,
             });
           }
           closeAssetModal();
@@ -7745,7 +8318,32 @@
         elements.assetCategoryFilter.addEventListener("change", renderAssetTable);
         elements.assetCountyFilter.addEventListener("change", renderAssetTable);
         elements.downloadWordButton.addEventListener("click", downloadWordList);
+        elements.downloadSelectedWordButton.addEventListener("click", openWordSelectModal);
         elements.newAssetButton.addEventListener("click", () => openAssetModal(null, { assetKind: state.assetDataset }));
+        elements.wordSelectCloseButton.addEventListener("click", closeWordSelectModal);
+        elements.wordSelectModal.addEventListener("click", (event) => {
+          if (event.target === elements.wordSelectModal) {
+            closeWordSelectModal();
+          }
+        });
+        elements.wordSelectSearch.addEventListener("input", (event) => {
+          state.wordSelectSearch = normalizeText(event.target.value);
+          renderWordSelectModal();
+        });
+        elements.wordSelectCategoryTabs.addEventListener("click", (event) => {
+          const button = event.target.closest("[data-word-category]");
+          if (!button) return;
+          state.wordSelectCategory = normalizeText(button.dataset.wordCategory);
+          renderWordSelectModal();
+        });
+        elements.wordSelectAllButton.addEventListener("click", selectAllVisibleWordAssets);
+        elements.wordSelectClearButton.addEventListener("click", clearWordAssetSelection);
+        elements.wordSelectList.addEventListener("change", (event) => {
+          const checkbox = event.target.closest("input[type='checkbox'][data-word-asset-id]");
+          if (!checkbox) return;
+          toggleWordAssetSelection(checkbox.dataset.wordAssetId, checkbox.checked);
+        });
+        elements.wordSelectDownloadButton.addEventListener("click", downloadSelectedWordList);
         elements.assetForm.addEventListener("submit", handleAssetSave);
         elements.resetAssetFormButton.addEventListener("click", () => {
           const asset = getSelectedAsset();
