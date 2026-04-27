@@ -1699,6 +1699,9 @@
                   <input id="project-import-input" type="file" accept=".xls,.xlsx" data-requires-auth />
                   匯入職再清單 Excel
                 </label>
+                <button id="apply-project-note-photos-btn" type="button" class="ghost-btn">
+                  批次套用 Excel 照片
+                </button>
               </div>
               <div id="project-import-preview" class="stack-list" hidden></div>
             </section>
@@ -2296,6 +2299,7 @@
       const AUTO_LOGIN_SESSION_KEY = "kppt-auto-login-attempted";
       const DRIVE_ACCESS_TOKEN_KEY = "kppt-drive-access-token";
       const DRIVE_ACCESS_TOKEN_EXPIRY_KEY = "kppt-drive-access-token-expiry";
+      const PROJECT_NOTE_PHOTO_MANIFEST_PATH = "data/assistive-note-photo-manifest.json";
 
       const DRIVE_CONFIG = {
         clientId: "658513065345-kst6ahnsauvlu4dq2f2jq6vqp2p9gm3n.apps.googleusercontent.com",
@@ -2364,6 +2368,7 @@
       let authObserverBound = false;
       let redirectResultChecked = false;
       let googleIdentityPromise = null;
+      let projectNotePhotoManifestPromise = null;
 
       const viewTitles = {
         loans: "借用 / 歸還",
@@ -2445,6 +2450,7 @@
         recycleSubtabs: document.querySelector("#recycle-subtabs"),
         recycleTableBody: document.querySelector("#recycle-table-body"),
         projectImportInput: document.querySelector("#project-import-input"),
+        projectApplyNotePhotosButton: document.querySelector("#apply-project-note-photos-btn"),
         projectImportPreview: document.querySelector("#project-import-preview"),
         dashboardProjectSummary: document.querySelector("#dashboard-project-summary"),
         countySummary: document.querySelector("#county-summary"),
@@ -2668,6 +2674,109 @@
           tracker.add(key);
           return true;
         });
+      }
+
+      async function loadProjectNotePhotoManifest() {
+        if (!projectNotePhotoManifestPromise) {
+          projectNotePhotoManifestPromise = fetch(PROJECT_NOTE_PHOTO_MANIFEST_PATH, {
+            cache: "no-store",
+          })
+            .then(async (response) => {
+              if (!response.ok) {
+                throw new Error(`Excel 照片對照檔讀取失敗 (${response.status})`);
+              }
+              const payload = await response.json();
+              return Array.isArray(payload) ? payload : [];
+            })
+            .catch((error) => {
+              projectNotePhotoManifestPromise = null;
+              throw error;
+            });
+        }
+        return projectNotePhotoManifestPromise;
+      }
+
+      function buildProjectNotePhotoIndex(manifest = []) {
+        return manifest.reduce((map, item) => {
+          const code = normalizeAssetCode(item?.code);
+          if (!code) return map;
+          if (!map.has(code)) {
+            map.set(code, []);
+          }
+          map.get(code).push(item);
+          return map;
+        }, new Map());
+      }
+
+      function buildProjectNotePhotoEntries(code = "", photoIndex = new Map()) {
+        const normalizedCode = normalizeAssetCode(code);
+        const matches = photoIndex.get(normalizedCode) || [];
+        return matches.map((item) => ({
+          url: encodeURI(`data/assistive-note-photos/${item.fileName}`),
+          name: normalizeText(item.name) || normalizeText(item.fileName) || "Excel 註記照片",
+          source: "excel-note-photo",
+          uploadedAt: "",
+          note: `${normalizeText(item.sourceWorkbook) || "Excel"} 註記照片`,
+          code: normalizeAssetCode(item.code),
+        }));
+      }
+
+      function mergePhotoEntries(existingPhotos = [], nextPhotos = []) {
+        return uniqueBy(
+          [...(Array.isArray(existingPhotos) ? existingPhotos : []), ...(Array.isArray(nextPhotos) ? nextPhotos : [])]
+            .map((photo) => ({
+              ...photo,
+              url: normalizePhotoUrl(photo?.url),
+              name: normalizeText(photo?.name),
+              source: normalizeText(photo?.source),
+              note: normalizeText(photo?.note),
+              code: normalizeAssetCode(photo?.code),
+            }))
+            .filter((photo) => photo.fileId || photo.url),
+          (photo) => `${normalizeText(photo.fileId)}|${normalizeText(photo.url)}|${normalizeText(photo.name)}`,
+        );
+      }
+
+      async function applyBundledProjectPhotosToRecords(records = [], options = {}) {
+        const { persist = false } = options;
+        const manifest = await loadProjectNotePhotoManifest();
+        const photoIndex = buildProjectNotePhotoIndex(manifest);
+        const nextRecords = [];
+        const changedRecords = [];
+        let matchedAssets = 0;
+        let matchedPhotos = 0;
+
+        for (const record of records) {
+          const normalizedRecord = {
+            ...record,
+            assetKind: "project",
+          };
+          const bundledPhotos = buildProjectNotePhotoEntries(normalizedRecord.code, photoIndex);
+          if (!bundledPhotos.length) {
+            nextRecords.push(normalizedRecord);
+            continue;
+          }
+          const mergedPhotos = mergePhotoEntries(normalizedRecord.photos, bundledPhotos);
+          const changed = mergedPhotos.length !== (Array.isArray(normalizedRecord.photos) ? normalizedRecord.photos.length : 0);
+          const nextRecord = changed ? { ...normalizedRecord, photos: mergedPhotos } : normalizedRecord;
+          nextRecords.push(nextRecord);
+          if (changed) {
+            changedRecords.push(nextRecord);
+            matchedAssets += 1;
+            matchedPhotos += bundledPhotos.length;
+          }
+        }
+
+        if (persist && changedRecords.length) {
+          await upsertAssets("project", changedRecords);
+        }
+
+        return {
+          records: nextRecords,
+          changedRecords,
+          matchedAssets,
+          matchedPhotos,
+        };
       }
 
       function isCompactViewport() {
@@ -2974,9 +3083,14 @@
           }
           if (result?.user) {
             state.user = mapFirebaseUser(result.user);
+            sessionStorage.removeItem(AUTO_LOGIN_SESSION_KEY);
           }
         } catch (error) {
           console.error(error);
+          sessionStorage.removeItem(AUTO_LOGIN_SESSION_KEY);
+        }
+        if (!state.user) {
+          sessionStorage.removeItem(AUTO_LOGIN_SESSION_KEY);
         }
         return state.accessToken;
       }
@@ -2999,6 +3113,21 @@
                   state.allowedUsers = [];
                   state.selectedCaseId = "";
                   renderAll();
+                }
+                const hasPendingRedirect = Boolean(sessionStorage.getItem(AUTO_LOGIN_SESSION_KEY)) && !redirectResultChecked;
+                if (hasPendingRedirect) {
+                  updateSyncBadge("正在完成 Google 登入...", "loading");
+                  try {
+                    await restoreDriveAccessTokenFromRedirect();
+                  } catch (error) {
+                    console.error(error);
+                  }
+                  if (state.user) {
+                    closeAuthGateModal();
+                    updateSyncBadge("已登入，正在同步資料...", "loading");
+                    await refreshRemoteData();
+                    return;
+                  }
                 }
                 updateSyncBadge("請先登入 Google / Firebase", "idle");
                 if (shouldPromptAuthGate()) {
@@ -3036,6 +3165,7 @@
         provider.setCustomParameters({ prompt: "select_account" });
         const useRedirect = preferRedirect || window.matchMedia("(max-width: 768px)").matches;
         if (useRedirect) {
+          sessionStorage.setItem(AUTO_LOGIN_SESSION_KEY, "1");
           await auth.signInWithRedirect(provider);
           return null;
         }
@@ -3817,6 +3947,10 @@
         });
         elements.recycleNewAssetButton.disabled = !signedIn || !adminMode;
         elements.newAssetButton.disabled = !signedIn || !adminMode;
+        if (elements.projectApplyNotePhotosButton) {
+          elements.projectApplyNotePhotosButton.hidden = !adminMode;
+          elements.projectApplyNotePhotosButton.disabled = !signedIn || !adminMode;
+        }
         elements.caseDeleteButton.disabled = !signedIn || !getSelectedCase();
         elements.caseDeleteSelectedButton.disabled = !signedIn || state.selectedCaseRowIds.length === 0;
         elements.loanRecordDeleteButton.disabled = !signedIn || !isAdminUser(state.user) || !getSelectedLoanRecord();
@@ -5111,6 +5245,7 @@
 
       function renderLoanSelectionReview() {
         const processAssets = getLoanSubmissionAssets();
+        const selectedCases = getSelectedLoanCases();
         elements.loanReviewCount.textContent =
           state.loanMode === "return" || processAssets.length !== state.loanAssetQueue.length
             ? `${processAssets.length}/${state.loanAssetQueue.length} 件`
@@ -5121,7 +5256,20 @@
           return;
         }
         elements.loanSelectionReview.className = "stack-list loan-selection-review";
-        elements.loanSelectionReview.innerHTML = state.loanAssetQueue
+        const caseReminder = state.loanMode === "borrow" && selectedCases.length === 0
+          ? `
+            <article class="loan-asset-row is-disabled">
+              <div class="loan-asset-main">
+                <strong>尚未填入使用個案</strong>
+                <small>可先送出借用流程，但建議在上方補選借用對象 / 個案，後續紀錄會更完整。</small>
+              </div>
+              <div class="loan-asset-inline">
+                <span class="chip">待補</span>
+              </div>
+            </article>
+          `
+          : "";
+        elements.loanSelectionReview.innerHTML = `${caseReminder}${state.loanAssetQueue
           .map((asset) => {
             if (state.loanMode === "return") {
               const borrowerLabel = [asset.borrowPerson, asset.borrowUnit].filter(Boolean).join(" / ");
@@ -5173,7 +5321,7 @@
               </article>
             `;
           })
-          .join("");
+          .join("")}`;
       }
 
       function renderLoanConfirmationSummary() {
@@ -5222,7 +5370,7 @@
                 ? `<p><strong>借用對象：</strong>${escapeHtml(
                     selectedCases.length
                       ? selectedCases.map((entry) => `${entry.caseCode || "未填編號"}｜${entry.name || "未填姓名"}`).join("、")
-                      : "未勾選",
+                      : "尚未填入使用個案",
                   )}</p>`
                 : ""
             }
@@ -5921,17 +6069,16 @@
 
       function buildPhotoEntriesFromForm(photoUrl, existingPhotos = []) {
         const normalizedUrl = normalizePhotoUrl(photoUrl);
-        const retained = (existingPhotos || []).filter((photo) => photo.fileId);
+        const retained = mergePhotoEntries(existingPhotos, []);
         if (!normalizedUrl) return retained;
-        return [
+        return mergePhotoEntries(retained, [
           {
             url: normalizedUrl,
             name: "外部網址照片",
             source: "external-link",
             uploadedAt: "",
           },
-          ...retained,
-        ];
+        ]);
       }
 
       function normalizeHeader(value) {
@@ -6104,6 +6251,7 @@
       async function parseProjectWorkbook(file) {
         const buffer = await file.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
+        const projectNotePhotoIndex = buildProjectNotePhotoIndex(await loadProjectNotePhotoManifest().catch(() => []));
         const records = [];
         const sheetSummaries = [];
         workbook.SheetNames.forEach((sheetName) => {
@@ -6127,6 +6275,7 @@
             const name = pickField(row, headerMap, ["名稱", "輔具名稱"]);
             if (!code && !name) continue;
             if (/總計|百分比|高屏澎東區/.test(`${code}${name}`)) continue;
+            const bundledPhotos = buildProjectNotePhotoEntries(code, projectNotePhotoIndex);
             const tagStatus = pickField(row, headerMap, ["是否已貼標籤"]);
             const kit = pickField(row, headerMap, ["Kit評估包"]);
             const quantity = pickField(row, headerMap, ["數量"]);
@@ -6169,7 +6318,7 @@
               maintenanceRecord: "",
               reuseRecord: "",
               remarks,
-              photos: [],
+              photos: bundledPhotos,
               createdAt: new Date().toISOString(),
             });
             count += 1;
@@ -6661,13 +6810,22 @@
           const parsed = await Promise.all(files.map((file) => parseProjectWorkbook(file)));
           state.importedProjectAssets = parsed.flatMap((item) => item.records);
           state.importedProjectSheets = parsed.flatMap((item) => item.sheetSummaries);
+          const matchedPhotoAssets = state.importedProjectAssets.filter((item) => Array.isArray(item.photos) && item.photos.length)
+            .length;
+          const matchedPhotoCount = state.importedProjectAssets.reduce(
+            (sum, item) => sum + (Array.isArray(item.photos) ? item.photos.length : 0),
+            0,
+          );
           renderImportPreviews();
           await autoSyncImportedRecords({
             label: "職再清單",
             records: state.importedProjectAssets,
             inputElement: event.target,
             persist: (records) => upsertAssets("project", records),
-            successMessage: `職再清單已自動同步到 Firebase，共 ${state.importedProjectAssets.length} 筆`,
+            successMessage:
+              matchedPhotoCount > 0
+                ? `職再清單已自動同步到 Firebase，共 ${state.importedProjectAssets.length} 筆，並帶入 ${matchedPhotoAssets} 筆 / ${matchedPhotoCount} 張 Excel 照片`
+                : `職再清單已自動同步到 Firebase，共 ${state.importedProjectAssets.length} 筆`,
             failureMessage: "職再清單同步失敗",
           });
         } catch (error) {
@@ -6678,6 +6836,33 @@
           event.target.value = "";
         }
         renderImportPreviews();
+      }
+
+      async function handleApplyProjectNotePhotos() {
+        if (!state.user || !isAdminUser(state.user)) {
+          updateSyncBadge("只有管理員可以批次套用 Excel 照片", "warn");
+          return;
+        }
+        if (!state.projectAssets.length) {
+          updateSyncBadge("目前沒有可套用照片的職再清單資料", "warn");
+          return;
+        }
+        updateSyncBadge("正在把 Excel 註記照片套用到職再清單...", "loading");
+        try {
+          const result = await applyBundledProjectPhotosToRecords(state.projectAssets, { persist: true });
+          await refreshRemoteData({ quiet: true });
+          if (result.matchedAssets === 0) {
+            updateSyncBadge("沒有找到需要補入照片的職再輔具編號", "warn");
+            return;
+          }
+          updateSyncBadge(
+            `已補入 ${result.matchedAssets} 筆職再輔具、共 ${result.matchedPhotos} 張 Excel 照片`,
+            "success",
+          );
+        } catch (error) {
+          console.error(error);
+          updateSyncBadge(error?.message || "批次套用 Excel 照片失敗", "error");
+        }
       }
 
       async function handleAssetSave(event) {
@@ -7539,6 +7724,7 @@
           renderRecycleWorkspace();
         });
         elements.projectImportInput.addEventListener("change", handleProjectImport);
+        elements.projectApplyNotePhotosButton?.addEventListener("click", handleApplyProjectNotePhotos);
         elements.assetDatasetSwitch.addEventListener("change", () => {
           state.assetDataset = normalizeAssetKind(elements.assetDatasetSwitch.value);
           state.selectedAssetId = "";
