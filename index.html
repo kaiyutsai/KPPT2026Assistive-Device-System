@@ -1825,7 +1825,7 @@
                   匯入職再清單 Excel
                 </label>
                 <button id="apply-project-note-photos-btn" type="button" class="ghost-btn">
-                  批次套用 Excel 照片
+                  批次上傳 Excel 照片
                 </button>
               </div>
               <div id="project-import-preview" class="stack-list" hidden></div>
@@ -2453,8 +2453,6 @@
       const DRIVE_ACCESS_TOKEN_KEY = "kppt-drive-access-token";
       const DRIVE_ACCESS_TOKEN_EXPIRY_KEY = "kppt-drive-access-token-expiry";
       const PROJECT_NOTE_PHOTO_MANIFEST_PATH = "data/assistive-note-photo-manifest.json";
-      const WORD_LABEL_TEMPLATE_PATH = "資料區/(13)US4462.docx";
-
       const DRIVE_CONFIG = {
         clientId: "658513065345-kst6ahnsauvlu4dq2f2jq6vqp2p9gm3n.apps.googleusercontent.com",
         rootFolderId: "1vUwy7SyIwcXNAyFddO-KJQBKkBleinAj",
@@ -2777,6 +2775,9 @@
       function normalizePhotoUrl(value) {
         const source = normalizeText(value);
         if (!source) return "";
+        if (/^(data\/|資料區\/)/i.test(source)) {
+          return buildAppRelativeUrl(source);
+        }
         const directFileMatch = source.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
         if (directFileMatch) {
           return `https://drive.google.com/thumbnail?id=${directFileMatch[1]}&sz=w1600`;
@@ -2786,6 +2787,17 @@
           return `https://drive.google.com/thumbnail?id=${queryIdMatch[1]}&sz=w1600`;
         }
         return source;
+      }
+
+      function buildAppRelativeUrl(relativePath = "") {
+        const source = normalizeText(relativePath);
+        if (!source) return "";
+        if (/^(https?:|blob:|data:)/i.test(source)) return source;
+        try {
+          return new URL(source, window.location.href).toString();
+        } catch (error) {
+          return encodeURI(source);
+        }
       }
 
       function createStableId(prefix, rawValue) {
@@ -2882,7 +2894,7 @@
         const normalizedCode = normalizeAssetCode(code);
         const matches = photoIndex.get(normalizedCode) || [];
         return matches.map((item) => ({
-          url: encodeURI(`data/assistive-note-photos/${item.fileName}`),
+          url: buildAppRelativeUrl(`data/assistive-note-photos/${item.fileName}`),
           name: normalizeText(item.name) || normalizeText(item.fileName) || "Excel 註記照片",
           source: "excel-note-photo",
           uploadedAt: "",
@@ -2946,6 +2958,135 @@
           changedRecords,
           matchedAssets,
           matchedPhotos,
+        };
+      }
+
+      function isBundledExcelPhotoEntry(photo = {}) {
+        const source = normalizeText(photo.source).toLowerCase();
+        const url = normalizeText(photo.url);
+        return !normalizeText(photo.fileId) && (
+          source === "excel-note-photo" ||
+          /assistive-note-photos\//i.test(url)
+        );
+      }
+
+      function guessImageMimeType(fileName = "") {
+        const source = normalizeText(fileName).toLowerCase();
+        if (source.endsWith(".png")) return "image/png";
+        if (source.endsWith(".webp")) return "image/webp";
+        if (source.endsWith(".gif")) return "image/gif";
+        return "image/jpeg";
+      }
+
+      async function fetchStaticAssetBlob(url = "") {
+        const target = buildAppRelativeUrl(url);
+        const response = await fetch(target, {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error(`靜態資源讀取失敗 (${response.status})：${target}`);
+        }
+        return response.blob();
+      }
+
+      async function uploadAssetPhotoBlob(assetId, blob, fileName = "", meta = {}, assetKind = "project") {
+        const normalizedKind = normalizeAssetKind(assetKind);
+        const photoFolderId = await ensureDriveUploadReady();
+        const kindFolderId = await ensureChildFolder(`${normalizedKind}-photos`, photoFolderId);
+        const safeName = normalizeText(fileName) || `${normalizeAssetCode(meta.code || assetId) || assetId}.jpg`;
+        const uploadName = `${normalizeAssetCode(meta.code || assetId) || assetId}-${Date.now()}-${safeName}`;
+        const mimeType = blob.type || guessImageMimeType(safeName);
+        const uploaded = await uploadMultipartFile({
+          metadata: {
+            name: uploadName,
+            parents: [kindFolderId],
+            description: `${normalizeAssetCode(meta.code || assetId) || assetId} / ${meta.note || "excel-note-photo"}`,
+          },
+          blob,
+          mimeType,
+        });
+        return {
+          fileId: uploaded.id,
+          url: `https://drive.google.com/file/d/${uploaded.id}/view`,
+          name: safeName,
+          mimeType,
+          note: meta.note || "",
+          code: meta.code || "",
+          uploadedAt: new Date().toISOString(),
+          source: "drive-upload",
+        };
+      }
+
+      async function migrateBundledProjectPhotosToDrive(records = [], options = {}) {
+        const { persist = false } = options;
+        const nextRecords = [];
+        const changedRecords = [];
+        let migratedAssets = 0;
+        let migratedPhotos = 0;
+        let failedPhotos = 0;
+
+        for (const record of records) {
+          const normalizedRecord = {
+            ...record,
+            assetKind: "project",
+          };
+          const photoEntries = getPhotoEntries(normalizedRecord);
+          const legacyPhotos = photoEntries.filter((photo) => isBundledExcelPhotoEntry(photo));
+          if (!legacyPhotos.length) {
+            nextRecords.push(normalizedRecord);
+            continue;
+          }
+
+          const preservedPhotos = photoEntries.filter((photo) => !isBundledExcelPhotoEntry(photo));
+          const uploadedPhotos = [];
+          const unresolvedPhotos = [];
+
+          for (const photo of legacyPhotos) {
+            try {
+              const blob = await fetchStaticAssetBlob(photo.url);
+              const uploaded = await uploadAssetPhotoBlob(
+                normalizedRecord.id || createStableId("asset-manual", `${normalizedRecord.code}|${normalizedRecord.name}`),
+                blob,
+                photo.name || `${normalizedRecord.code || normalizedRecord.name}.jpg`,
+                {
+                  note: photo.note || "Excel 註記照片",
+                  code: normalizedRecord.code,
+                },
+                "project",
+              );
+              uploadedPhotos.push(uploaded);
+            } catch (error) {
+              console.warn("Excel 註記照片搬移失敗", normalizedRecord.code, photo.url, error);
+              unresolvedPhotos.push(photo);
+              failedPhotos += 1;
+            }
+          }
+
+          if (!uploadedPhotos.length) {
+            nextRecords.push(normalizedRecord);
+            continue;
+          }
+
+          const nextRecord = {
+            ...normalizedRecord,
+            photos: mergePhotoEntries([...preservedPhotos, ...unresolvedPhotos], uploadedPhotos),
+          };
+          nextRecords.push(nextRecord);
+          changedRecords.push(nextRecord);
+          migratedAssets += 1;
+          migratedPhotos += uploadedPhotos.length;
+        }
+
+        if (persist && changedRecords.length) {
+          await upsertAssets("project", changedRecords);
+        }
+
+        return {
+          records: nextRecords,
+          changedRecords,
+          migratedAssets,
+          migratedPhotos,
+          failedPhotos,
         };
       }
 
@@ -3802,8 +3943,15 @@
 
       async function upsertAssets(assetKind, records) {
         const normalizedKind = normalizeAssetKind(assetKind);
+        const existingAssets = new Map(
+          getDecoratedAssets(normalizedKind).map((asset) => [
+            asset.id,
+            asset,
+          ]),
+        );
         const next = records.map((item) => ({
           ...item,
+          photos: mergePhotoEntries(existingAssets.get(item.id)?.photos, item.photos),
           assetKind: normalizedKind,
           updatedAt: new Date().toISOString(),
         }));
@@ -5312,7 +5460,6 @@
   <w:body>
     <w:tbl>
       <w:tblPr>
-        <w:tblStyle w:val="a3"/>
         <w:tblW w:w="0" w:type="auto"/>
         <w:tblInd w:w="500" w:type="dxa"/>
         <w:tblBorders>
@@ -5354,37 +5501,47 @@
       }
 
       function buildWordLabelRelationshipsXml(existingRelationshipsXml = "", imageRels = []) {
-        const closingTag = "</Relationships>";
         const additions = imageRels
-          .map((item) => `<Relationship Id="${escapeXml(item.relId)}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${escapeXml(item.fileName)}"/>`)
+          .map(
+            (item) =>
+              `<Relationship Id="${escapeXml(item.relId)}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${escapeXml(item.fileName)}"/>`,
+          )
           .join("");
-        return existingRelationshipsXml.replace(closingTag, `${additions}${closingTag}`);
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${additions}</Relationships>`;
       }
 
-      function ensureWordPngContentType(contentTypesXml = "") {
-        if (/Extension="png"/i.test(contentTypesXml)) return contentTypesXml;
-        return contentTypesXml.replace("</Types>", '<Default Extension="png" ContentType="image/png"/></Types>');
+      function buildWordRootRelationshipsXml() {
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+      }
+
+      function buildWordContentTypesXml() {
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
       }
 
       async function buildWordTemplateDocxBlob(assets = []) {
         if (!window.JSZip) {
           throw new Error("Word 模板模組尚未載入，請重新整理頁面再試");
         }
-        const response = await fetch(encodeURI(WORD_LABEL_TEMPLATE_PATH));
-        if (!response.ok) {
-          throw new Error("無法讀取 Word 標籤模板");
-        }
-        const zip = await window.JSZip.loadAsync(await response.arrayBuffer());
+        const zip = new window.JSZip();
         const imageRels = assets.map((asset, index) => ({
           relId: `rIdImage${index + 1}`,
           fileName: `qr-${index + 1}.png`,
           bytes: dataUrlToUint8Array(buildQrDataUrl(asset.code)),
         }));
         zip.file("word/document.xml", buildWordLabelDocumentXml(assets, imageRels));
-        const relsXml = await zip.file("word/_rels/document.xml.rels").async("string");
-        zip.file("word/_rels/document.xml.rels", buildWordLabelRelationshipsXml(relsXml, imageRels));
-        const contentTypesXml = await zip.file("[Content_Types].xml").async("string");
-        zip.file("[Content_Types].xml", ensureWordPngContentType(contentTypesXml));
+        zip.file("_rels/.rels", buildWordRootRelationshipsXml());
+        zip.file("word/_rels/document.xml.rels", buildWordLabelRelationshipsXml("", imageRels));
+        zip.file("[Content_Types].xml", buildWordContentTypesXml());
         imageRels.forEach((item) => {
           zip.file(`word/media/${item.fileName}`, item.bytes);
         });
@@ -7498,12 +7655,31 @@
           const parsed = await Promise.all(files.map((file) => parseProjectWorkbook(file)));
           state.importedProjectAssets = parsed.flatMap((item) => item.records);
           state.importedProjectSheets = parsed.flatMap((item) => item.sheetSummaries);
-          const matchedPhotoAssets = state.importedProjectAssets.filter((item) => Array.isArray(item.photos) && item.photos.length)
+          let matchedPhotoAssets = state.importedProjectAssets.filter((item) => Array.isArray(item.photos) && item.photos.length)
             .length;
-          const matchedPhotoCount = state.importedProjectAssets.reduce(
+          let matchedPhotoCount = state.importedProjectAssets.reduce(
             (sum, item) => sum + (Array.isArray(item.photos) ? item.photos.length : 0),
             0,
           );
+          let migratedPhotoAssets = 0;
+          let migratedPhotoCount = 0;
+          let migrationFailedCount = 0;
+          if (matchedPhotoCount > 0) {
+            try {
+              const migrated = await migrateBundledProjectPhotosToDrive(state.importedProjectAssets, { persist: false });
+              state.importedProjectAssets = migrated.records;
+              migratedPhotoAssets = migrated.migratedAssets;
+              migratedPhotoCount = migrated.migratedPhotos;
+              migrationFailedCount = migrated.failedPhotos;
+            } catch (migrationError) {
+              console.warn("Excel 註記照片自動搬移失敗，將先保留原始路徑", migrationError);
+            }
+            matchedPhotoAssets = state.importedProjectAssets.filter((item) => Array.isArray(item.photos) && item.photos.length).length;
+            matchedPhotoCount = state.importedProjectAssets.reduce(
+              (sum, item) => sum + (Array.isArray(item.photos) ? item.photos.length : 0),
+              0,
+            );
+          }
           renderImportPreviews();
           await autoSyncImportedRecords({
             label: "職再清單",
@@ -7512,7 +7688,9 @@
             persist: (records) => upsertAssets("project", records),
             successMessage:
               matchedPhotoCount > 0
-                ? `職再清單已自動同步到 Firebase，共 ${state.importedProjectAssets.length} 筆，並帶入 ${matchedPhotoAssets} 筆 / ${matchedPhotoCount} 張 Excel 照片`
+                ? migratedPhotoCount > 0
+                  ? `職再清單已自動同步到 Firebase，共 ${state.importedProjectAssets.length} 筆，並上傳 ${migratedPhotoAssets} 筆 / ${migratedPhotoCount} 張 Excel 照片到 Google Drive${migrationFailedCount ? `（另有 ${migrationFailedCount} 張仍保留原路徑）` : ""}`
+                  : `職再清單已自動同步到 Firebase，共 ${state.importedProjectAssets.length} 筆，並帶入 ${matchedPhotoAssets} 筆 / ${matchedPhotoCount} 張 Excel 照片`
                 : `職再清單已自動同步到 Firebase，共 ${state.importedProjectAssets.length} 筆`,
             failureMessage: "職再清單同步失敗",
           });
@@ -7528,28 +7706,29 @@
 
       async function handleApplyProjectNotePhotos() {
         if (!state.user || !isAdminUser(state.user)) {
-          updateSyncBadge("只有管理員可以批次套用 Excel 照片", "warn");
+          updateSyncBadge("只有管理員可以批次上傳 Excel 照片", "warn");
           return;
         }
         if (!state.projectAssets.length) {
-          updateSyncBadge("目前沒有可套用照片的職再清單資料", "warn");
+          updateSyncBadge("目前沒有可補照片的職再清單資料", "warn");
           return;
         }
-        updateSyncBadge("正在把 Excel 註記照片套用到職再清單...", "loading");
+        updateSyncBadge("正在把 Excel 註記照片搬移到 Google Drive...", "loading");
         try {
-          const result = await applyBundledProjectPhotosToRecords(state.projectAssets, { persist: true });
+          const applied = await applyBundledProjectPhotosToRecords(state.projectAssets, { persist: false });
+          const result = await migrateBundledProjectPhotosToDrive(applied.records, { persist: true });
           await refreshRemoteData({ quiet: true });
-          if (result.matchedAssets === 0) {
-            updateSyncBadge("沒有找到需要補入照片的職再輔具編號", "warn");
+          if (result.migratedAssets === 0) {
+            updateSyncBadge("沒有找到需要搬移到雲端的 Excel 照片", "warn");
             return;
           }
           updateSyncBadge(
-            `已補入 ${result.matchedAssets} 筆職再輔具、共 ${result.matchedPhotos} 張 Excel 照片`,
+            `已搬移 ${result.migratedAssets} 筆職再輔具、共 ${result.migratedPhotos} 張 Excel 照片到 Google Drive${result.failedPhotos ? `（另有 ${result.failedPhotos} 張未成功）` : ""}`,
             "success",
           );
         } catch (error) {
           console.error(error);
-          updateSyncBadge(error?.message || "批次套用 Excel 照片失敗", "error");
+          updateSyncBadge(error?.message || "批次上傳 Excel 照片失敗", "error");
         }
       }
 
