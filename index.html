@@ -2919,6 +2919,25 @@
         );
       }
 
+      function getPhotoPriority(photo = {}) {
+        if (normalizeText(photo?.fileId)) return 0;
+        if (!isBundledExcelPhotoEntry(photo)) return 1;
+        return 2;
+      }
+
+      function cleanupLegacyPhotoEntries(photos = []) {
+        const merged = mergePhotoEntries(photos, []);
+        const hasDrivePhoto = merged.some((photo) => normalizeText(photo?.fileId));
+        if (!hasDrivePhoto) return merged;
+        return merged.filter((photo) => !isBundledExcelPhotoEntry(photo));
+      }
+
+      function getEditableExternalPhoto(asset) {
+        return getPhotoEntries(asset).find(
+          (photo) => photo?.url && !photo?.fileId && !isBundledExcelPhotoEntry(photo),
+        ) || null;
+      }
+
       async function applyBundledProjectPhotosToRecords(records = [], options = {}) {
         const { persist = false } = options;
         const manifest = await loadProjectNotePhotoManifest();
@@ -4236,7 +4255,7 @@
             url: normalizePhotoUrl(photo.url),
           })),
           (photo) => `${photo.fileId || photo.url || ""}|${photo.name || ""}`,
-        );
+        ).sort((left, right) => getPhotoPriority(left) - getPhotoPriority(right));
       }
 
       function getPrimaryPhoto(asset) {
@@ -5628,7 +5647,7 @@
         elements.assetCounty.value = asset.county || "";
         elements.assetStatus.value = asset.status || "";
         elements.assetLocation.value = asset.location || "";
-        const externalPhoto = getPhotoEntries(asset).find((photo) => photo.url && !photo.fileId);
+        const externalPhoto = getEditableExternalPhoto(asset);
         elements.assetPhotoUrl.value = externalPhoto?.url || "";
         elements.assetBrandModel.value = [asset.brand, asset.model].filter(Boolean).join(" / ");
         elements.assetSourceInfo.value = asset.sourceInfo || "";
@@ -6914,7 +6933,7 @@
 
       function buildPhotoEntriesFromForm(photoUrl, existingPhotos = []) {
         const normalizedUrl = normalizePhotoUrl(photoUrl);
-        const retained = mergePhotoEntries(existingPhotos, []);
+        const retained = cleanupLegacyPhotoEntries(existingPhotos);
         if (!normalizedUrl) return retained;
         return mergePhotoEntries(retained, [
           {
