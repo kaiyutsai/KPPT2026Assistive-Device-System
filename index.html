@@ -1075,7 +1075,11 @@
         background: linear-gradient(135deg, rgba(39, 82, 255, 0.12), rgba(39, 82, 255, 0.03));
       }
 
-      .case-option-list,
+      .case-option-list {
+        max-height: 520px;
+        overflow: auto;
+      }
+
       .loan-asset-queue {
         max-height: 260px;
         overflow: auto;
@@ -1130,7 +1134,7 @@
 
       .case-company-head {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
         gap: 10px;
       }
@@ -1146,6 +1150,19 @@
         cursor: pointer;
       }
 
+      .case-company-select {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      .case-company-select.is-active strong {
+        color: #2552ff;
+      }
+
+      .case-company-select.is-active small {
+        color: rgba(37, 82, 255, 0.78);
+      }
+
       .case-company-toggle strong {
         font-size: 1rem;
       }
@@ -1159,6 +1176,11 @@
         display: flex;
         align-items: center;
         gap: 8px;
+      }
+
+      .case-company-expand {
+        min-width: 46px;
+        padding-inline: 0;
       }
 
       .case-company-members {
@@ -1305,6 +1327,22 @@
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
+      }
+
+      .loan-scan-meta {
+        display: grid;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .loan-scan-note {
+        display: grid;
+        gap: 6px;
+      }
+
+      .loan-scan-advance {
+        justify-content: flex-end;
+        padding-top: 0;
       }
 
       .dialog-step-row {
@@ -1615,6 +1653,7 @@
 
         .case-company-head {
           flex-direction: column;
+          align-items: stretch;
         }
 
         .loan-scan-buttons > * {
@@ -1631,6 +1670,10 @@
         .surface,
         .metric-panel {
           padding: 18px;
+        }
+
+        .case-option-list {
+          max-height: 360px;
         }
 
         .topbar {
@@ -2179,7 +2222,7 @@
         <div class="dialog-head-copy">
           <p class="eyebrow">借用 / 歸還</p>
           <h3 id="loan-modal-title">借用設備</h3>
-          <div class="dialog-mode-row">
+          <div class="dialog-mode-row" hidden>
             <span id="loan-mode-pill" class="pill">📤 借用</span>
             <span id="loan-step-indicator" class="pill">步驟 1｜掃碼設備</span>
             <p id="loan-mode-description" class="mode-inline-text" hidden>掃碼 → 對象 → 確認</p>
@@ -2196,15 +2239,28 @@
           <div class="loan-workflow-layout">
             <div class="detail-block">
               <div class="detail-block-head">
-                <h4 id="loan-scan-title">掃碼設備</h4>
+                <h4 id="loan-scan-title">掃 QR 碼</h4>
                 <div id="loan-action-display" class="field field-display">借出</div>
               </div>
               <p id="loan-scan-hint" class="loan-scan-hint" hidden>先拍照掃碼，可拍一張或多張，系統會自動帶出設備資料。</p>
               <input id="loan-qr-single-input" type="file" accept="image/*" capture="environment" hidden />
               <input id="loan-qr-photo-input" type="file" accept="image/*" capture="environment" multiple hidden />
               <div class="loan-scan-buttons">
-                <button id="loan-open-single-scan-btn" type="button" class="primary-btn" data-requires-auth>拍一張掃碼</button>
-                <button id="loan-open-multi-scan-btn" type="button" class="ghost-btn" data-requires-auth>多張拍照掃碼</button>
+                <button id="loan-open-multi-scan-btn" type="button" class="primary-btn" data-requires-auth>📷 拍照掃碼</button>
+                <button id="loan-open-single-scan-btn" type="button" class="ghost-btn" data-requires-auth>單張</button>
+              </div>
+              <div class="loan-scan-meta">
+                <label id="loan-borrow-note-wrap" class="loan-scan-note">
+                  備註
+                  <textarea id="loan-note" class="field" rows="2"></textarea>
+                </label>
+                <label id="loan-return-note-wrap" class="loan-scan-note loan-section-hidden">
+                  備註
+                  <textarea id="loan-return-note" class="field" rows="2"></textarea>
+                </label>
+                <div class="form-actions loan-scan-advance loan-section-hidden">
+                  <button id="loan-scan-next-btn" type="button" class="primary-btn loan-section-hidden" data-requires-auth hidden>下一步</button>
+                </div>
               </div>
             </div>
 
@@ -2225,15 +2281,7 @@
           </div>
         </div>
 
-        <div id="loan-step-details" class="span-2 loan-step-panel loan-section-hidden">
-          <div class="detail-block">
-            <div class="detail-block-head">
-              <h4 id="loan-review-title">本次處理設備</h4>
-              <span id="loan-review-count" class="pill">0 件</span>
-            </div>
-            <div id="loan-selection-review" class="stack-list empty-state">尚未掃描設備。</div>
-          </div>
-
+        <div id="loan-step-details" class="span-2 loan-step-panel">
           <div id="loan-borrow-fields" class="loan-workflow-layout">
             <div class="detail-block">
               <div class="detail-block-head">
@@ -2244,43 +2292,63 @@
               <div id="loan-case-groups" class="filter-tab-row"></div>
               <div id="loan-case-options" class="stack-list empty-state">尚未載入個案資料。</div>
             </div>
-
-            <div class="form-grid">
-              <label>
-                借用者（Google 驗證）
-                <input id="loan-person" class="field" type="text" required />
-              </label>
-              <label>日期 <input id="loan-date" class="field" type="date" required /></label>
-              <label class="span-2">備註 <textarea id="loan-note" class="field" rows="3"></textarea></label>
-            </div>
           </div>
 
-          <div id="loan-return-fields" class="loan-workflow-layout loan-section-hidden">
-            <div class="form-grid">
-              <label>
-                歸還者（Google 驗證）
-                <input id="loan-return-person" class="field" type="text" />
-              </label>
-              <label>日期 <input id="loan-return-date" class="field" type="date" /></label>
-              <label class="span-2">備註 <textarea id="loan-return-note" class="field" rows="3"></textarea></label>
+          <div class="detail-block loan-section-hidden">
+            <div class="detail-block-head">
+              <h4 id="loan-review-title">本次處理設備</h4>
+              <span id="loan-review-count" class="pill">0 件</span>
             </div>
+            <input
+              id="loan-details-asset-code"
+              class="field loan-section-hidden"
+              type="text"
+              list="asset-code-options"
+              placeholder="下一步仍可手動輸入設備編號後按 Enter"
+              hidden
+            />
+            <div id="loan-selection-review" class="stack-list empty-state">尚未掃描設備。</div>
           </div>
         </div>
 
         <div id="loan-step-confirm" class="span-2 loan-step-panel loan-section-hidden">
           <div class="detail-block">
             <div class="detail-block-head">
-              <h4>最後確認</h4>
+              <h4 id="loan-confirm-title">借用清單</h4>
               <span id="loan-confirm-count" class="pill">0 件</span>
             </div>
             <div id="loan-confirm-summary" class="stack-list empty-state">尚未整理確認資料。</div>
           </div>
+
+          <div id="loan-confirm-borrow-fields" class="loan-workflow-layout">
+            <div class="detail-block">
+              <div class="form-grid">
+                <label>
+                  借用者（Google 驗證）
+                  <input id="loan-person" class="field" type="text" required />
+                </label>
+                <label>借用日期 <input id="loan-date" class="field" type="date" required /></label>
+              </div>
+            </div>
+          </div>
+
+          <div id="loan-return-fields" class="loan-workflow-layout loan-section-hidden">
+            <div class="detail-block">
+              <div class="form-grid">
+                <label>
+                  歸還者（Google 驗證）
+                  <input id="loan-return-person" class="field" type="text" />
+                </label>
+                <label>歸還日期 <input id="loan-return-date" class="field" type="date" /></label>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="form-actions span-2">
-          <button id="loan-prev-step-btn" type="button" class="ghost-btn loan-section-hidden">上一步</button>
-          <button id="loan-next-step-btn" type="button" class="primary-btn" data-requires-auth>下一步</button>
-          <button id="loan-submit-btn" type="submit" class="primary-btn loan-section-hidden" data-requires-auth>確認借用</button>
+          <button id="loan-prev-step-btn" type="button" class="ghost-btn loan-section-hidden">返回修改</button>
+          <button id="loan-next-step-btn" type="button" class="primary-btn" data-requires-auth>送出借用</button>
+          <button id="loan-submit-btn" type="submit" class="primary-btn loan-section-hidden" data-requires-auth>確認送出</button>
         </div>
       </form>
     </dialog>
@@ -2396,8 +2464,13 @@
         <div class="span-2 detail-block">
           <div class="detail-block-head">
             <h4>輔具照片</h4>
-            <span id="asset-photo-count" class="pill">0 張</span>
+            <div class="toolbar">
+              <span id="asset-photo-count" class="pill">0 張</span>
+              <button id="asset-photo-upload-btn" type="button" class="ghost-btn icon-btn" title="重新上傳照片" aria-label="重新上傳照片">📷</button>
+              <button id="asset-photo-delete-btn" type="button" class="ghost-btn icon-btn danger" title="刪除照片" aria-label="刪除照片">🗑</button>
+            </div>
           </div>
+          <input id="asset-photo-upload-input" type="file" accept="image/*" capture="environment" hidden />
           <div id="asset-photo-strip" class="photo-strip"></div>
         </div>
 
@@ -2646,6 +2719,9 @@
         assetStatus: document.querySelector("#asset-status"),
         assetLocation: document.querySelector("#asset-location"),
         assetPhotoUrl: document.querySelector("#asset-photo-url"),
+        assetPhotoUploadButton: document.querySelector("#asset-photo-upload-btn"),
+        assetPhotoDeleteButton: document.querySelector("#asset-photo-delete-btn"),
+        assetPhotoUploadInput: document.querySelector("#asset-photo-upload-input"),
         assetBrandModel: document.querySelector("#asset-brand-model"),
         assetSourceInfo: document.querySelector("#asset-source-info"),
         assetMaintenanceRecord: document.querySelector("#asset-maintenance-record"),
@@ -2680,6 +2756,7 @@
         loanStepIndicator: document.querySelector("#loan-step-indicator"),
         loanActionDisplay: document.querySelector("#loan-action-display"),
         loanSubmitButton: document.querySelector("#loan-submit-btn"),
+        loanScanNextButton: document.querySelector("#loan-scan-next-btn"),
         loanPrevStepButton: document.querySelector("#loan-prev-step-btn"),
         loanNextStepButton: document.querySelector("#loan-next-step-btn"),
         loanResetButton: document.querySelector("#loan-reset-btn"),
@@ -2700,7 +2777,10 @@
         loanStepDetails: document.querySelector("#loan-step-details"),
         loanStepConfirm: document.querySelector("#loan-step-confirm"),
         loanBorrowFields: document.querySelector("#loan-borrow-fields"),
+        loanConfirmBorrowFields: document.querySelector("#loan-confirm-borrow-fields"),
+        loanBorrowNoteWrap: document.querySelector("#loan-borrow-note-wrap"),
         loanReturnFields: document.querySelector("#loan-return-fields"),
+        loanReturnNoteWrap: document.querySelector("#loan-return-note-wrap"),
         loanPerson: document.querySelector("#loan-person"),
         loanDate: document.querySelector("#loan-date"),
         loanCaseSearch: document.querySelector("#loan-case-search"),
@@ -2708,12 +2788,14 @@
         loanCaseOptions: document.querySelector("#loan-case-options"),
         loanTargetCount: document.querySelector("#loan-target-count"),
         loanAssetQueue: document.querySelector("#loan-asset-queue"),
+        loanDetailsAssetCode: document.querySelector("#loan-details-asset-code"),
         loanSelectionReview: document.querySelector("#loan-selection-review"),
         loanNote: document.querySelector("#loan-note"),
         loanReturnPerson: document.querySelector("#loan-return-person"),
         loanReturnDate: document.querySelector("#loan-return-date"),
         loanReturnNote: document.querySelector("#loan-return-note"),
         loanConfirmCount: document.querySelector("#loan-confirm-count"),
+        loanConfirmTitle: document.querySelector("#loan-confirm-title"),
         loanConfirmSummary: document.querySelector("#loan-confirm-summary"),
         loanTableBody: document.querySelector("#loan-table-body"),
         loanRecordModal: document.querySelector("#loan-record-modal"),
@@ -2917,6 +2999,26 @@
             .filter((photo) => photo.fileId || photo.url),
           (photo) => `${normalizeText(photo.fileId)}|${normalizeText(photo.url)}|${normalizeText(photo.name)}`,
         );
+      }
+
+      function getPhotoTimestamp(photo = {}) {
+        const source = normalizeText(photo?.uploadedAt || photo?.updatedAt || photo?.createdAt || "");
+        const parsed = source ? Date.parse(source) : 0;
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+
+      function keepLatestPhotoEntry(photos = []) {
+        const merged = mergePhotoEntries(photos, []);
+        if (!merged.length) return [];
+        return merged
+          .sort((left, right) => {
+            const timeDiff = getPhotoTimestamp(right) - getPhotoTimestamp(left);
+            if (timeDiff !== 0) return timeDiff;
+            const priorityDiff = getPhotoPriority(left) - getPhotoPriority(right);
+            if (priorityDiff !== 0) return priorityDiff;
+            return normalizeText(right.name).localeCompare(normalizeText(left.name), "zh-Hant");
+          })
+          .slice(0, 1);
       }
 
       function getPhotoPriority(photo = {}) {
@@ -4186,7 +4288,10 @@
         const assetRef = db.collection(getAssetCollectionName(normalizedKind)).doc(assetId);
         const assetSnap = await assetRef.get();
         const asset = assetSnap.exists ? assetSnap.data() : {};
-        const photos = Array.isArray(asset.photos) ? [...asset.photos] : [];
+        const previousPhotos = Array.isArray(asset.photos) ? [...asset.photos] : [];
+        const previousDriveFileIds = previousPhotos
+          .map((photo) => normalizeText(photo?.fileId))
+          .filter(Boolean);
         const photoEntry = {
           fileId: uploaded.id,
           url: driveFileUrl,
@@ -4202,7 +4307,7 @@
           uploadedAt: new Date().toISOString(),
           source: "drive-upload",
         };
-        photos.unshift(photoEntry);
+        const photos = [photoEntry];
         await assetRef.set(
           {
             ...asset,
@@ -4213,7 +4318,27 @@
           },
           { merge: true },
         );
+        await Promise.all(previousDriveFileIds.filter((fileId) => fileId !== uploaded.id).map((fileId) => deleteDriveFile(fileId)));
         return photoEntry;
+      }
+
+      async function deleteDriveFile(fileId = "") {
+        const normalizedFileId = normalizeText(fileId);
+        if (!normalizedFileId) return;
+        const url = buildApiUrl(`https://www.googleapis.com/drive/v3/files/${normalizedFileId}`, {
+          supportsAllDrives: "true",
+        });
+        try {
+          await driveRequest(url, { method: "DELETE" }, "text");
+        } catch (error) {
+          console.warn("deleteDriveFile failed", normalizedFileId, error);
+        } finally {
+          if (state.photoUrlCache.has(normalizedFileId)) {
+            URL.revokeObjectURL(state.photoUrlCache.get(normalizedFileId));
+            state.photoUrlCache.delete(normalizedFileId);
+          }
+          state.photoPromiseCache.delete(normalizedFileId);
+        }
       }
 
       async function markAssetInventoryComplete(assetId, assetKind = "recycle", meta = {}) {
@@ -4249,13 +4374,14 @@
 
       function getPhotoEntries(asset) {
         const photos = Array.isArray(asset?.photos) ? asset.photos : [];
-        return uniqueBy(
-          photos.map((photo) => ({
-            ...photo,
-            url: normalizePhotoUrl(photo.url),
-          })),
-          (photo) => `${photo.fileId || photo.url || ""}|${photo.name || ""}`,
-        ).sort((left, right) => getPhotoPriority(left) - getPhotoPriority(right));
+        return keepLatestPhotoEntry(
+          cleanupLegacyPhotoEntries(
+            photos.map((photo) => ({
+              ...photo,
+              url: normalizePhotoUrl(photo.url),
+            })),
+          ),
+        );
       }
 
       function getPrimaryPhoto(asset) {
@@ -4501,6 +4627,8 @@
         const hasLabelPayload = Boolean(
           normalizeText(elements.assetCode?.value) && normalizeText(elements.assetName?.value),
         );
+        const hasSavedAsset = Boolean(asset?.id);
+        const hasPhoto = getPhotoEntries(asset).length > 0;
         elements.assetForm
           ?.querySelectorAll("input:not([type='hidden']), textarea, select")
           .forEach((field) => {
@@ -4517,6 +4645,12 @@
         }
         if (elements.assetQrDownloadButton) {
           elements.assetQrDownloadButton.disabled = !signedIn || !adminMode || !hasLabelPayload;
+        }
+        if (elements.assetPhotoUploadButton) {
+          elements.assetPhotoUploadButton.disabled = !signedIn || !adminMode || !hasSavedAsset;
+        }
+        if (elements.assetPhotoDeleteButton) {
+          elements.assetPhotoDeleteButton.disabled = !signedIn || !adminMode || !hasSavedAsset || !hasPhoto;
         }
       }
 
@@ -5218,6 +5352,76 @@
         hydrateDriveImages(elements.assetPhotoStrip);
       }
 
+      async function handleAssetPhotoUpload(event) {
+        const file = event?.target?.files?.[0];
+        if (!file || !state.user || !isAdminUser(state.user)) return;
+        const asset = getSelectedAsset();
+        if (!asset?.id) {
+          updateSyncBadge("請先儲存這筆輔具後，再上傳照片", "warn");
+          if (elements.assetPhotoUploadInput) elements.assetPhotoUploadInput.value = "";
+          return;
+        }
+        setBusyState(true, "正在上傳最新版輔具照片，請稍後。");
+        updateSyncBadge("正在更新輔具照片...", "loading");
+        try {
+          await uploadAssetPhoto(
+            asset.id,
+            file,
+            {
+              code: normalizeAssetCode(asset.code),
+              note: "asset-modal-reupload",
+            },
+            asset.assetKind,
+          );
+          elements.assetPhotoUrl.value = "";
+          await refreshRemoteData();
+          const refreshedAsset = findAssetById(asset.id, asset.assetKind) || asset;
+          fillAssetForm(refreshedAsset);
+          updateSyncBadge("最新版輔具照片已更新", "success");
+        } catch (error) {
+          console.error(error);
+          updateSyncBadge(error?.message || "更新輔具照片失敗", "error");
+        } finally {
+          if (elements.assetPhotoUploadInput) elements.assetPhotoUploadInput.value = "";
+          setBusyState(false);
+        }
+      }
+
+      async function handleAssetPhotoDelete() {
+        if (!state.user || !isAdminUser(state.user)) return;
+        const asset = getSelectedAsset();
+        if (!asset?.id) return;
+        const photos = getPhotoEntries(asset);
+        if (!photos.length) return;
+        if (!window.confirm(`要刪除 ${asset.code || asset.name || "這筆輔具"} 的照片嗎？`)) return;
+        setBusyState(true, "正在刪除輔具照片，請稍後。");
+        updateSyncBadge("正在刪除輔具照片...", "loading");
+        try {
+          await Promise.all(
+            photos
+              .map((photo) => normalizeText(photo.fileId))
+              .filter(Boolean)
+              .map((fileId) => deleteDriveFile(fileId)),
+          );
+          const { primaryPhoto, ...assetRecord } = asset;
+          const nextRecord = {
+            ...assetRecord,
+            photos: [],
+            updatedAt: new Date().toISOString(),
+          };
+          await saveAsset(asset.assetKind, nextRecord);
+          elements.assetPhotoUrl.value = "";
+          await refreshRemoteData();
+          fillAssetForm(findAssetById(asset.id, asset.assetKind) || nextRecord);
+          updateSyncBadge("輔具照片已刪除", "success");
+        } catch (error) {
+          console.error(error);
+          updateSyncBadge(error?.message || "刪除輔具照片失敗", "error");
+        } finally {
+          setBusyState(false);
+        }
+      }
+
       function escapeHtml(value = "") {
         return String(value ?? "")
           .replace(/&/g, "&amp;")
@@ -5862,16 +6066,21 @@
         elements.loanModePill.textContent = meta.badge;
         elements.loanModeDescription.textContent = meta.description;
         elements.loanActionDisplay.textContent = meta.label;
-        elements.loanScanTitle.textContent = meta.scanTitle;
+        elements.loanScanTitle.textContent = "掃 QR 碼";
         elements.loanScanHint.textContent = meta.scanHint;
         elements.loanQueueTitle.textContent = meta.queueTitle;
         elements.loanReviewTitle.textContent = meta.value === "return" ? "歸還資料確認" : "借用資料填寫";
         elements.loanAssetCode.placeholder = meta.manualPlaceholder;
-        elements.loanOpenSingleScanButton.textContent = meta.singleButton;
-        elements.loanOpenMultiScanButton.textContent = meta.multiButton;
+        elements.loanDetailsAssetCode.placeholder = `${meta.manualPlaceholder}（此步驟也可補掃）`;
+        elements.loanOpenSingleScanButton.textContent = "單張";
+        elements.loanOpenMultiScanButton.textContent = "📷 拍照掃碼";
         elements.loanBorrowFields.classList.toggle("loan-section-hidden", meta.value !== "borrow");
+        elements.loanConfirmBorrowFields.classList.toggle("loan-section-hidden", meta.value !== "borrow");
+        elements.loanBorrowNoteWrap.classList.toggle("loan-section-hidden", meta.value !== "borrow");
         elements.loanReturnFields.classList.toggle("loan-section-hidden", meta.value !== "return");
-        elements.loanSubmitButton.textContent = meta.submit;
+        elements.loanReturnNoteWrap.classList.toggle("loan-section-hidden", meta.value !== "return");
+        elements.loanConfirmTitle.textContent = meta.value === "return" ? "歸還清單" : "借用清單";
+        elements.loanSubmitButton.textContent = meta.value === "return" ? "確認歸還" : "確認送出";
         syncLoanWorkflowState();
       }
 
@@ -5963,16 +6172,16 @@
         );
       }
 
-      function getRecentLoanCases(cases = [], limit = 5) {
-        return [...cases]
-          .sort((a, b) => {
-            const dateDiff = getCaseAcceptedDate(b) && getCaseAcceptedDate(a)
-              ? parseCaseSortTimestamp(getCaseAcceptedDate(b)) - parseCaseSortTimestamp(getCaseAcceptedDate(a))
-              : parseCaseSortTimestamp(getCaseAcceptedDate(b)) - parseCaseSortTimestamp(getCaseAcceptedDate(a));
-            if (dateDiff !== 0) return dateDiff;
-            return `${a.caseCode || ""} ${a.name || ""}`.localeCompare(`${b.caseCode || ""} ${b.name || ""}`, "zh-Hant");
-          })
-          .slice(0, limit);
+      function sortLoanCasesByAcceptedDate(cases = []) {
+        return [...cases].sort((a, b) => {
+          const dateDiff = parseCaseSortTimestamp(getCaseAcceptedDate(b)) - parseCaseSortTimestamp(getCaseAcceptedDate(a));
+          if (dateDiff !== 0) return dateDiff;
+          return `${a.caseCode || ""} ${a.name || ""}`.localeCompare(`${b.caseCode || ""} ${b.name || ""}`, "zh-Hant");
+        });
+      }
+
+      function getRecentLoanCases(cases = [], limit = 10) {
+        return sortLoanCasesByAcceptedDate(cases).slice(0, limit);
       }
 
       function toggleLoanCaseExpandGroup(groupLabel = "") {
@@ -5992,28 +6201,31 @@
         return [...new Set(cases.map((entry) => getLoanCaseGroupLabel(entry)).filter(Boolean))].join("、");
       }
 
+      function getLoanCaseSearchResults(cases = getAvailableCases(), searchValue = normalizeText(elements.loanCaseSearch.value).toLowerCase()) {
+        if (!searchValue) return sortLoanCasesByAcceptedDate(cases);
+        return sortLoanCasesByAcceptedDate(
+          cases.filter((entry) => {
+            const haystack = [
+              entry.caseCode,
+              entry.personCode,
+              entry.name,
+              entry.vendorName,
+              entry.unitName,
+              entry.displayItem,
+              entry.disabilityCategory,
+              entry.visitStaff,
+            ]
+              .map((value) => normalizeText(value).toLowerCase())
+              .join(" ");
+            return haystack.includes(searchValue);
+          }),
+        );
+      }
+
       function toggleLoanCaseGroup(groupLabel = "") {
         const normalizedGroup = normalizeText(groupLabel);
         if (!normalizedGroup) return;
-        const searchValue = normalizeText(elements.loanCaseSearch.value).toLowerCase();
-        const visibleSource = searchValue
-          ? getAvailableCases().filter((entry) => {
-              const haystack = [
-                entry.caseCode,
-                entry.personCode,
-                entry.name,
-                entry.vendorName,
-                entry.unitName,
-                entry.displayItem,
-                entry.disabilityCategory,
-                entry.visitStaff,
-              ]
-                .map((value) => normalizeText(value).toLowerCase())
-                .join(" ");
-              return haystack.includes(searchValue);
-            })
-          : [];
-        const visibleCases = visibleSource;
+        const visibleCases = getLoanCaseSearchResults();
         const groupIds = visibleCases.filter((entry) => getLoanCaseGroupLabel(entry) === normalizedGroup).map((entry) => entry.id);
         if (!groupIds.length) return;
         const selected = new Set(state.selectedLoanCaseIds);
@@ -6041,27 +6253,45 @@
         return state.loanMode === "return" ? getSelectedReturnAssets() : getBorrowableLoanAssets();
       }
 
-      function ensurePendingLoanAsset(showWarning = true) {
-        const pendingCode = normalizeText(elements.loanAssetCode.value);
-        if (!pendingCode) return true;
-        const pendingAsset = getDecoratedAssets("project").find(
-          (entry) => normalizeAssetCode(entry.code) === normalizeAssetCode(elements.loanAssetCode.value),
+      function queueLoanAssetByCode(code = "", showWarning = true) {
+        const normalizedCode = normalizeAssetCode(code);
+        if (!normalizedCode) return { ok: false, reason: "empty" };
+        const asset = getDecoratedAssets("project").find(
+          (entry) => normalizeAssetCode(entry.code) === normalizedCode,
         );
-        if (!pendingAsset) {
+        if (!asset) {
           if (showWarning) {
             updateSyncBadge("找不到這個輔具編號，請先確認後再繼續", "warn");
           }
-          return false;
+          return { ok: false, reason: "missing" };
         }
-        const added = addLoanAssetToQueue(pendingAsset);
-        elements.loanAssetCode.value = "";
-        if (!added.ok && showWarning) {
-          if (added.reason === "borrowed") {
-            updateSyncBadge("這件設備目前是借出中，無法再次借用", "warn");
-          } else {
-            updateSyncBadge("這件設備已經在清單裡", "warn");
-          }
+        const added = addLoanAssetToQueue(asset);
+        if (!showWarning) return added;
+        if (!added.ok) {
+          updateSyncBadge("這件設備已經在清單裡", "warn");
+          return added;
         }
+        if (state.loanMode === "return") {
+          const queueItem = state.loanAssetQueue.find((entry) => entry.id === asset.id);
+          updateSyncBadge(
+            queueItem?.isReturnable ? "設備已加入歸還清單" : "已加入清單，但目前沒有借出紀錄",
+            queueItem?.isReturnable ? "success" : "warn",
+          );
+          return added;
+        }
+        updateSyncBadge(
+          added.reason === "borrowed-preview" ? "設備已辨識，下一步會顯示目前借出狀態" : "設備已加入借用清單",
+          added.reason === "borrowed-preview" ? "warn" : "success",
+        );
+        return added;
+      }
+
+      function ensurePendingLoanAsset(showWarning = true, source = "scan") {
+        const sourceElement = source === "details" ? elements.loanDetailsAssetCode : elements.loanAssetCode;
+        const pendingCode = normalizeText(sourceElement.value);
+        if (!pendingCode) return true;
+        const added = queueLoanAssetByCode(pendingCode, showWarning);
+        sourceElement.value = "";
         return added.ok || added.reason === "duplicate";
       }
 
@@ -6075,6 +6305,7 @@
       }
 
       function validateLoanDetailsStep(showWarning = true) {
+        if (showWarning && !ensurePendingLoanAsset(true, "details")) return false;
         if (state.loanMode === "return") {
           if (getSelectedReturnAssets().length > 0) return true;
           if (showWarning) {
@@ -6093,13 +6324,10 @@
       }
 
       function getLoanStepLabel(step = state.loanStep) {
-        if (step === "details") {
-          return state.loanMode === "return" ? "2 / 歸還" : "2 / 對象";
-        }
         if (step === "confirm") {
-          return "3 / 確認";
+          return "確認";
         }
-        return "1 / 掃碼";
+        return state.loanMode === "return" ? "歸還" : "借用";
       }
 
       function renderLoanSelectionReview() {
@@ -6184,9 +6412,13 @@
       }
 
       function renderLoanConfirmationSummary() {
-        const assets = getLoanSubmissionAssets();
-        elements.loanConfirmCount.textContent = `${assets.length} 件`;
-        if (assets.length === 0) {
+        const reviewAssets = state.loanAssetQueue;
+        const submitAssets = getLoanSubmissionAssets();
+        elements.loanConfirmCount.textContent =
+          state.loanMode === "return"
+            ? `${submitAssets.length}/${reviewAssets.length} 件`
+            : `${submitAssets.length}/${reviewAssets.length} 件`;
+        if (reviewAssets.length === 0) {
           elements.loanConfirmSummary.className = "stack-list empty-state";
           elements.loanConfirmSummary.textContent = "尚未整理確認資料。";
           return;
@@ -6207,17 +6439,46 @@
         elements.loanConfirmSummary.innerHTML = `
           <article class="loan-flow-card loan-confirm-block">
             <h4>${state.loanMode === "return" ? "本次歸還設備" : "本次借用設備"}</h4>
-            <ul>
-              ${assets
+            <div class="stack-list loan-asset-queue">
+              ${reviewAssets
                 .map((asset) => {
-                  const borrowMeta =
-                    state.loanMode === "return"
-                      ? `<br /><small>${[asset.borrowDate ? `借用日期 ${escapeHtml(asset.borrowDate)}` : "", [asset.borrowPerson, asset.borrowUnit].filter(Boolean).join(" / ")].filter(Boolean).join(" / ") || "尚無借用資料"}</small>`
-                      : "";
-                  return `<li><strong>${escapeHtml(asset.code || "未填編號")}｜${escapeHtml(asset.name || "未命名設備")}</strong>${borrowMeta}</li>`;
+                  if (state.loanMode === "return") {
+                    const borrowerLabel = [asset.borrowPerson, asset.borrowUnit].filter(Boolean).join(" / ");
+                    const caseLabel = formatCompactPreview(asset.borrowCases || [], "");
+                    return `
+                      <article class="loan-asset-row ${asset.isReturnable ? "" : "is-disabled"}">
+                        <div class="loan-asset-main">
+                          <strong class="text-compact" data-expandable-text="true" title="${escapeHtml(`${asset.code || "未填編號"}｜${asset.name || "未命名設備"}`)}">${escapeHtml(`${asset.code || "未填編號"}｜${asset.name || "未命名設備"}`)}</strong>
+                          <small class="text-compact" data-expandable-text="true" title="${escapeHtml(`${asset.borrowDate ? `借用日期 ${asset.borrowDate}` : "尚無借用日期"}${borrowerLabel ? ` / ${borrowerLabel}` : ""}`)}">${escapeHtml(`${asset.borrowDate ? `借用日期 ${asset.borrowDate}` : "尚無借用日期"}${borrowerLabel ? ` / ${borrowerLabel}` : ""}`)}</small>
+                          ${caseLabel ? `<small class="text-compact" data-expandable-text="true" title="${escapeHtml(`借用對象：${(asset.borrowCases || []).join("、")}`)}">${escapeHtml(`借用對象：${caseLabel}`)}</small>` : ""}
+                        </div>
+                        <div class="loan-asset-inline">
+                          <span class="chip">${asset.isReturnable ? "可歸還" : "未借出"}</span>
+                        </div>
+                      </article>
+                    `;
+                  }
+                  const borrowMeta = [
+                    asset.category || "",
+                    asset.status || "",
+                    asset.isBorrowable === false ? "目前借出中" : "可借用",
+                  ]
+                    .filter(Boolean)
+                    .join(" / ");
+                  return `
+                    <article class="loan-asset-row ${asset.isBorrowable === false ? "is-disabled" : ""}">
+                      <div class="loan-asset-main">
+                        <strong class="text-compact" data-expandable-text="true" title="${escapeHtml(`${asset.code || "未填編號"}｜${asset.name || "未命名設備"}`)}">${escapeHtml(`${asset.code || "未填編號"}｜${asset.name || "未命名設備"}`)}</strong>
+                        <small class="text-compact" data-expandable-text="true" title="${escapeHtml(borrowMeta)}">${escapeHtml(borrowMeta)}</small>
+                      </div>
+                      <div class="loan-asset-inline">
+                        <span class="chip">${asset.isBorrowable === false ? "借出中" : "可借用"}</span>
+                      </div>
+                    </article>
+                  `;
                 })
                 .join("")}
-            </ul>
+            </div>
           </article>
           <article class="loan-flow-card loan-confirm-block">
             <h4>${state.loanMode === "return" ? "歸還資料" : "借用資料"}</h4>
@@ -6239,20 +6500,20 @@
       }
 
       function syncLoanWorkflowState() {
-        const isScanStep = state.loanStep === "scan";
-        const isDetailsStep = state.loanStep === "details";
         const isConfirmStep = state.loanStep === "confirm";
+        const isFormStep = !isConfirmStep;
         elements.loanStepIndicator.textContent = getLoanStepLabel(state.loanStep);
-        elements.loanStepScan.classList.toggle("loan-section-hidden", !isScanStep);
-        elements.loanStepDetails.classList.toggle("loan-section-hidden", !isDetailsStep);
+        elements.loanStepScan.classList.toggle("loan-section-hidden", !isFormStep);
+        elements.loanStepDetails.classList.toggle("loan-section-hidden", !(isFormStep && state.loanMode === "borrow"));
         elements.loanStepConfirm.classList.toggle("loan-section-hidden", !isConfirmStep);
-        elements.loanPrevStepButton.classList.toggle("loan-section-hidden", isScanStep);
+        elements.loanPrevStepButton.classList.toggle("loan-section-hidden", !isConfirmStep);
+        elements.loanScanNextButton.classList.add("loan-section-hidden");
         elements.loanNextStepButton.classList.toggle("loan-section-hidden", isConfirmStep);
         elements.loanSubmitButton.classList.toggle("loan-section-hidden", !isConfirmStep);
-        elements.loanPrevStepButton.textContent = isConfirmStep ? "返回修改" : "回到掃碼";
-        elements.loanNextStepButton.textContent = isScanStep ? "下一步" : "前往確認";
-        elements.loanNextStepButton.disabled =
-          isScanStep ? !validateLoanScanStep(false) : !validateLoanDetailsStep(false);
+        elements.loanPrevStepButton.textContent = "返回修改";
+        elements.loanNextStepButton.textContent = state.loanMode === "return" ? "送出歸還" : "送出借用";
+        elements.loanScanNextButton.disabled = true;
+        elements.loanNextStepButton.disabled = !validateLoanScanStep(false);
         elements.loanSubmitButton.disabled = !validateLoanDetailsStep(false);
       }
 
@@ -6262,42 +6523,22 @@
         renderLoanConfirmationSummary();
         syncLoanWorkflowState();
         requestAnimationFrame(() => {
-          if (step === "details") {
+          if (step === "confirm") {
             if (state.loanMode === "borrow") {
-              elements.loanCaseSearch?.focus();
+              elements.loanPerson?.focus();
             } else {
-              elements.loanReturnNote?.focus();
+              elements.loanSubmitButton?.focus();
             }
             return;
           }
-          if (step === "confirm") {
-            elements.loanSubmitButton?.focus();
-            return;
-          }
-          elements.loanOpenSingleScanButton?.focus();
+          elements.loanOpenMultiScanButton?.focus();
         });
       }
 
       function renderLoanCaseOptions() {
         const availableCases = getAvailableCases();
         const searchValue = normalizeText(elements.loanCaseSearch.value).toLowerCase();
-        const visibleCases = searchValue
-          ? availableCases.filter((entry) => {
-              const haystack = [
-                entry.caseCode,
-                entry.personCode,
-                entry.name,
-                entry.vendorName,
-                entry.unitName,
-                entry.displayItem,
-                entry.disabilityCategory,
-                entry.visitStaff,
-              ]
-                .map((value) => normalizeText(value).toLowerCase())
-                .join(" ");
-              return haystack.includes(searchValue);
-            })
-          : [];
+        const visibleCases = getLoanCaseSearchResults(availableCases, searchValue);
         state.selectedLoanCaseIds = state.selectedLoanCaseIds.filter((id) => availableCases.some((entry) => entry.id === id));
         elements.loanTargetCount.textContent = `${state.selectedLoanCaseIds.length} 人`;
         if (availableCases.length === 0) {
@@ -6308,17 +6549,10 @@
           syncLoanWorkflowState();
           return;
         }
-        if (!searchValue) {
+        if (visibleCases.length === 0) {
           elements.loanCaseGroups.innerHTML = "";
           elements.loanCaseOptions.className = "stack-list empty-state";
-          elements.loanCaseOptions.textContent = "輸入關鍵字後顯示。";
-          renderLoanConfirmationSummary();
-          syncLoanWorkflowState();
-          return;
-        } else if (visibleCases.length === 0) {
-          elements.loanCaseGroups.innerHTML = "";
-          elements.loanCaseOptions.className = "stack-list empty-state";
-          elements.loanCaseOptions.textContent = "找不到符合條件的個案。";
+          elements.loanCaseOptions.textContent = searchValue ? "找不到符合條件的個案。" : "尚未載入可借用對象。";
           renderLoanConfirmationSummary();
           syncLoanWorkflowState();
           return;
@@ -6353,38 +6587,39 @@
           .map((group) => {
             if (group.type !== "company") {
               const entry = group.entries[0];
+              const secondaryText = [getLoanCaseGroupLabel(entry), entry.jobTitle || entry.disabilityCategory, getCaseAcceptedDate(entry), entry.visitStaff]
+                .filter(Boolean)
+                .join(" / ") || "未補齊個案資訊";
               return `
                 <label class="case-option">
                   <input type="checkbox" data-case-id="${entry.id}" ${state.selectedLoanCaseIds.includes(entry.id) ? "checked" : ""} />
                   <div>
                     <strong class="text-compact" data-expandable-text="true" title="${escapeHtml(`${entry.caseCode || "未填編號"}｜${entry.name || "未填姓名"}`)}">${escapeHtml(`${entry.caseCode || "未填編號"}｜${entry.name || "未填姓名"}`)}</strong>
-                    <small class="text-compact" data-expandable-text="true" title="${escapeHtml([getLoanCaseGroupLabel(entry), entry.jobTitle || entry.disabilityCategory, getCaseAcceptedDate(entry), entry.visitStaff].filter(Boolean).join(" / ") || "未補齊個案資訊")}">${escapeHtml([getLoanCaseGroupLabel(entry), entry.jobTitle || entry.disabilityCategory, getCaseAcceptedDate(entry), entry.visitStaff].filter(Boolean).join(" / ") || "未補齊個案資訊")}</small>
+                    <small class="text-compact" data-expandable-text="true" title="${escapeHtml(secondaryText)}">${escapeHtml(secondaryText)}</small>
                   </div>
-                  <button type="button" class="chip" data-action="toggle-case-group" data-group="${escapeHtml(
-                    getLoanCaseGroupLabel(entry) || "",
-                  )}">${escapeHtml(getLoanCaseGroupLabel(entry) || "個案")}</button>
                 </label>
               `;
             }
             const groupIds = group.entries.map((entry) => entry.id);
             const allSelected = groupIds.length > 0 && groupIds.every((id) => state.selectedLoanCaseIds.includes(id));
+            const selectedCount = groupIds.filter((id) => state.selectedLoanCaseIds.includes(id)).length;
             const acceptedDates = group.entries.map((entry) => getCaseAcceptedDate(entry)).filter(Boolean);
             const latestAcceptedDate = acceptedDates.sort((a, b) => parseCaseSortTimestamp(b) - parseCaseSortTimestamp(a))[0] || "";
             const expanded = searchValue ? true : state.loanCaseExpandedGroups.includes(group.label);
+            const sortedEntries = sortLoanCasesByAcceptedDate(group.entries);
             return `
               <article class="case-company-group">
                 <div class="case-company-head">
-                  <button type="button" class="case-company-toggle" data-action="toggle-expand-case-group" data-group="${escapeHtml(group.label)}">
+                  <button type="button" class="case-company-toggle case-company-select ${allSelected ? "is-active" : ""}" data-action="toggle-case-group" data-group="${escapeHtml(group.label)}" title="${escapeHtml(allSelected ? `取消 ${group.label} 全選` : `全選 ${group.label}`)}">
                     <strong class="text-compact" data-expandable-text="true" title="${escapeHtml(group.label || "公司個案")}">${escapeHtml(group.label || "公司個案")}</strong>
-                    <small class="text-compact" data-expandable-text="true" title="${escapeHtml(`${group.entries.length} 位${latestAcceptedDate ? ` / 受案日 ${latestAcceptedDate}` : ""}`)}">${escapeHtml(`${group.entries.length} 位${latestAcceptedDate ? ` / 受案日 ${latestAcceptedDate}` : ""}`)}</small>
+                    <small class="text-compact" data-expandable-text="true" title="${escapeHtml(`${group.entries.length} 位${latestAcceptedDate ? ` / 最近受案 ${latestAcceptedDate}` : ""}${selectedCount ? ` / 已選 ${selectedCount}` : ""}`)}">${escapeHtml(`${group.entries.length} 位${latestAcceptedDate ? ` / 最近受案 ${latestAcceptedDate}` : ""}${selectedCount ? ` / 已選 ${selectedCount}` : ""}`)}</small>
                   </button>
                   <div class="case-company-actions">
-                    <button type="button" class="chip ${allSelected ? "active" : ""}" data-action="toggle-case-group" data-group="${escapeHtml(group.label)}">${allSelected ? "取消全選" : "全選"}</button>
-                    <button type="button" class="chip" data-action="toggle-expand-case-group" data-group="${escapeHtml(group.label)}">${expanded ? "收合" : "展開"}</button>
+                    <button type="button" class="chip case-company-expand" data-action="toggle-expand-case-group" data-group="${escapeHtml(group.label)}" title="${expanded ? "收合個案" : "展開個案"}">${expanded ? "－" : "＋"}</button>
                   </div>
                 </div>
                 <div class="case-company-members ${expanded ? "" : "loan-section-hidden"}">
-                  ${group.entries
+                  ${sortedEntries
                     .map(
                       (entry) => `
                         <label class="case-option">
@@ -6933,16 +7168,16 @@
 
       function buildPhotoEntriesFromForm(photoUrl, existingPhotos = []) {
         const normalizedUrl = normalizePhotoUrl(photoUrl);
-        const retained = cleanupLegacyPhotoEntries(existingPhotos);
+        const retained = getPhotoEntries({ photos: existingPhotos });
         if (!normalizedUrl) return retained;
-        return mergePhotoEntries(retained, [
+        return keepLatestPhotoEntry(mergePhotoEntries(retained, [
           {
             url: normalizedUrl,
             name: "外部網址照片",
             source: "external-link",
             uploadedAt: "",
           },
-        ]);
+        ]));
       }
 
       function normalizeHeader(value) {
@@ -7873,6 +8108,7 @@
         state.loanStep = "scan";
         elements.loanCaseSearch.value = "";
         elements.loanAssetCode.value = "";
+        elements.loanDetailsAssetCode.value = "";
         elements.loanNote.value = "";
         elements.loanReturnNote.value = "";
         elements.loanQrSingleInput.value = "";
@@ -7886,20 +8122,11 @@
       }
 
       function goToNextLoanStep() {
-        if (state.loanStep === "scan") {
-          if (!validateLoanScanStep(true)) return;
-          setLoanStep("details");
-          return;
-        }
-        if (!validateLoanDetailsStep(true)) return;
+        if (!validateLoanScanStep(true)) return;
         setLoanStep("confirm");
       }
 
       function goToPreviousLoanStep() {
-        if (state.loanStep === "confirm") {
-          setLoanStep("details");
-          return;
-        }
         setLoanStep("scan");
       }
 
@@ -7950,12 +8177,7 @@
               ? "，其中部分設備目前沒有借出紀錄"
               : "";
           const resultMessage = `已辨識 ${recognizedCount} 件${borrowedCount ? `，其中 ${borrowedCount} 件目前借出中` : ""}${duplicateCount ? `，${duplicateCount} 件重複掃描` : ""}${unmatchedCount ? `，${unmatchedCount} 件未匹配` : ""}${extraHint}`;
-          if (isMultiBatch) {
-            updateSyncBadge(`${resultMessage}，可繼續加入或按下一步`, borrowedCount || duplicateCount || unmatchedCount ? "warn" : "success");
-          } else {
-            updateSyncBadge(resultMessage, borrowedCount || duplicateCount || unmatchedCount ? "warn" : "success");
-            setLoanStep("details");
-          }
+          updateSyncBadge(`${resultMessage}，可繼續加入或按下一步`, borrowedCount || duplicateCount || unmatchedCount ? "warn" : "success");
         } else {
           if (duplicateCount > 0 && unmatchedCount === 0) {
             updateSyncBadge(`這些設備已經在目前清單裡，共 ${duplicateCount} 件`, "warn");
@@ -8204,7 +8426,7 @@
           return;
         }
         if (!validateLoanDetailsStep(true)) {
-          setLoanStep("details");
+          setLoanStep("confirm");
           return;
         }
         const modeMeta = getLoanActionMeta(state.loanMode);
@@ -8662,6 +8884,21 @@
         elements.assetQrDownloadButton.addEventListener("click", handleAssetQrDownload);
         elements.assetCode.addEventListener("input", () => syncAssetFormAccess(getSelectedAsset()));
         elements.assetName.addEventListener("input", () => syncAssetFormAccess(getSelectedAsset()));
+        elements.assetPhotoUploadButton.addEventListener("click", async () => {
+          if (elements.assetPhotoUploadButton.disabled || !elements.assetPhotoUploadInput) return;
+          elements.assetPhotoUploadInput.value = "";
+          if (typeof elements.assetPhotoUploadInput.showPicker === "function") {
+            try {
+              elements.assetPhotoUploadInput.showPicker();
+              return;
+            } catch (error) {
+              console.warn(error);
+            }
+          }
+          elements.assetPhotoUploadInput.click();
+        });
+        elements.assetPhotoUploadInput.addEventListener("change", handleAssetPhotoUpload);
+        elements.assetPhotoDeleteButton.addEventListener("click", handleAssetPhotoDelete);
         elements.resetAssetFormButton.addEventListener("click", () => {
           const asset = getSelectedAsset();
           if (asset) {
@@ -8832,6 +9069,7 @@
         elements.loanResetButton.addEventListener("click", () => {
           resetLoanWorkflow();
         });
+        elements.loanScanNextButton.addEventListener("click", goToNextLoanStep);
         elements.loanPrevStepButton.addEventListener("click", goToPreviousLoanStep);
         elements.loanNextStepButton.addEventListener("click", goToNextLoanStep);
         elements.loanModalClose.addEventListener("click", closeLoanModal);
@@ -8912,31 +9150,14 @@
         elements.loanAssetCode.addEventListener("keydown", (event) => {
           if (event.key !== "Enter") return;
           event.preventDefault();
-          const asset = getDecoratedAssets("project").find(
-            (entry) => normalizeAssetCode(entry.code) === normalizeAssetCode(elements.loanAssetCode.value),
-          );
-          if (!asset) {
-            updateSyncBadge("找不到這個輔具編號", "warn");
-            return;
-          }
-        const added = addLoanAssetToQueue(asset);
-        elements.loanAssetCode.value = "";
-        if (!added.ok) {
-          updateSyncBadge("這件設備已經在清單裡", "warn");
-          return;
-        }
-        if (state.loanMode === "return") {
-          const queueItem = state.loanAssetQueue.find((entry) => entry.id === asset.id);
-          updateSyncBadge(
-              queueItem?.isReturnable ? "設備已加入歸還清單" : "已加入清單，但目前沒有借出紀錄",
-              queueItem?.isReturnable ? "success" : "warn",
-            );
-            return;
-          }
-          updateSyncBadge(
-            added.reason === "borrowed-preview" ? "設備已辨識，下一步會顯示目前借出狀態" : "設備已加入借用清單",
-            added.reason === "borrowed-preview" ? "warn" : "success",
-          );
+          queueLoanAssetByCode(elements.loanAssetCode.value, true);
+          elements.loanAssetCode.value = "";
+        });
+        elements.loanDetailsAssetCode.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          queueLoanAssetByCode(elements.loanDetailsAssetCode.value, true);
+          elements.loanDetailsAssetCode.value = "";
         });
         elements.loanQrSingleInput.addEventListener("change", handleLoanQrPhotos);
         elements.loanQrPhotoInput.addEventListener("change", handleLoanQrPhotos);
