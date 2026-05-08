@@ -2179,28 +2179,15 @@
 
         <section class="view active" data-view="loans">
           <div class="stack-layout">
-            <section class="surface loan-command-panel">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">借還操作</p>
-                  <h3>先點借用或歸還，再開啟作業視窗</h3>
-                </div>
-                <div class="loan-command-row">
-                  <button id="loan-borrow-btn" type="button" class="primary-btn" data-requires-auth>借用</button>
-                  <button id="loan-return-btn" type="button" class="ghost-btn" data-requires-auth>歸還</button>
-                </div>
-              </div>
-              <div class="table-caption-row">
-                <p>適用對象可複選，拍照掃 QR 可連續加入多件設備。</p>
-                <span class="pill">下面是狀況清單</span>
-              </div>
-            </section>
-
             <section class="surface loan-status-surface">
               <div class="section-head">
                 <div>
                   <p class="eyebrow">狀況清單</p>
                   <h3>最新借用 / 歸還狀況</h3>
+                </div>
+                <div class="loan-command-row">
+                  <button id="loan-borrow-btn" type="button" class="primary-btn" data-requires-auth>借用</button>
+                  <button id="loan-return-btn" type="button" class="ghost-btn" data-requires-auth>歸還</button>
                 </div>
               </div>
               <div class="table-wrap">
@@ -2438,7 +2425,7 @@
         </div>
         <div class="toolbar">
           <button id="loan-reset-btn" type="button" class="ghost-btn">清空</button>
-          <button id="loan-modal-close" type="button" class="ghost-btn">關閉</button>
+          <button id="loan-modal-close" type="button" class="ghost-btn icon-btn" title="關閉" aria-label="關閉">✕</button>
         </div>
       </div>
       <form id="loan-form" class="form-grid">
