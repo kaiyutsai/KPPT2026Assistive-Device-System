@@ -1719,6 +1719,214 @@
           margin-left: 0;
         }
       }
+
+      /* === 個案匯入預覽 modal === */
+      .case-import-modal {
+        width: min(960px, calc(100vw - 24px));
+        max-height: calc(100vh - 24px);
+        overflow: auto;
+      }
+
+      .case-import-toolbar {
+        margin-bottom: 12px;
+        align-items: center;
+      }
+
+      .case-import-staging {
+        display: grid;
+        gap: 10px;
+        max-height: 56vh;
+        overflow: auto;
+        padding: 4px;
+        margin-bottom: 16px;
+      }
+
+      .case-import-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 12px;
+        align-items: start;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(31, 54, 120, 0.1);
+        background: rgba(255, 255, 255, 0.94);
+      }
+
+      .case-import-row.is-removed {
+        opacity: 0.5;
+        background: rgba(216, 56, 74, 0.06);
+      }
+
+      .case-import-row > input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        margin-top: 4px;
+      }
+
+      .case-import-row-body {
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .case-import-row-title {
+        font-weight: 700;
+      }
+
+      .case-import-row-meta {
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.5;
+        word-break: break-word;
+      }
+
+      .case-import-row-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .case-import-row-actions button {
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(31, 54, 120, 0.12);
+        background: rgba(255, 255, 255, 0.92);
+        font-size: 0.85rem;
+      }
+
+      .case-import-row-actions button.danger {
+        color: var(--danger);
+      }
+
+      .case-import-edit-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .case-import-edit-grid label {
+        display: grid;
+        gap: 4px;
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+
+      .case-import-edit-grid label.span-2 {
+        grid-column: span 2;
+      }
+
+      .case-import-edit-grid input {
+        padding: 8px 10px;
+        border: 1px solid rgba(31, 54, 120, 0.14);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--text);
+        font-size: 0.92rem;
+      }
+
+      @media (max-width: 640px) {
+        .case-import-row {
+          grid-template-columns: auto 1fr;
+        }
+
+        .case-import-row-actions {
+          grid-column: 1 / -1;
+          justify-content: flex-end;
+        }
+
+        .case-import-edit-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .case-import-edit-grid label.span-2 {
+          grid-column: auto;
+        }
+      }
+
+      /* === 手機 RWD 補強：表格水平滾動、按鈕排列、tab 橫滑 === */
+      @media (max-width: 960px) {
+        .data-table {
+          min-width: 720px;
+        }
+
+        .case-toolbar .toolbar,
+        .case-toolbar,
+        .filter-tab-row,
+        .topbar-actions {
+          flex-wrap: wrap;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .section-head {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .section-head .toolbar {
+          justify-content: flex-start;
+        }
+
+        .topbar-actions {
+          width: 100%;
+          flex-wrap: wrap;
+        }
+
+        .topbar-actions > * {
+          flex: 0 1 auto;
+        }
+
+        .data-table {
+          min-width: 640px;
+          font-size: 0.92rem;
+        }
+
+        .data-table thead th,
+        .data-table tbody td {
+          white-space: nowrap;
+        }
+
+        .data-table tbody td .table-ellipsis,
+        .data-table tbody td .loan-status-cell,
+        .data-table tbody td .row-actions {
+          white-space: normal;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .case-toolbar .toolbar > * {
+          flex: 1 1 calc(50% - 6px);
+        }
+
+        .filter-tab-row {
+          overflow-x: auto;
+          flex-wrap: nowrap;
+          padding-bottom: 4px;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .filter-tab-row::-webkit-scrollbar {
+          height: 4px;
+        }
+
+        .filter-tab {
+          flex-shrink: 0;
+          white-space: nowrap;
+        }
+
+        .data-table {
+          min-width: 560px;
+        }
+
+        .topbar h2 {
+          font-size: 1.45rem;
+        }
+
+        .brand-block h1 {
+          font-size: 1.4rem;
+        }
+      }
     </style>
   </head>
   <body>
@@ -2411,6 +2619,31 @@
       </form>
     </dialog>
 
+    <dialog id="case-import-modal" class="form-modal case-import-modal">
+      <div class="dialog-head">
+        <div class="dialog-head-copy">
+          <p class="eyebrow">個案 Excel 匯入預覽</p>
+          <h3 id="case-import-modal-title">確認匯入內容</h3>
+          <p id="case-import-modal-meta" class="muted-note"></p>
+        </div>
+        <div class="toolbar">
+          <button id="case-import-modal-close" type="button" class="ghost-btn">取消</button>
+        </div>
+      </div>
+
+      <div class="case-import-toolbar toolbar">
+        <button id="case-import-select-all-btn" type="button" class="ghost-btn">全選</button>
+        <button id="case-import-clear-btn" type="button" class="ghost-btn">全部不勾</button>
+        <span id="case-import-summary" class="muted-note">已勾選 0 / 0 筆</span>
+      </div>
+
+      <div id="case-import-staging" class="case-import-staging empty-state">尚無資料。</div>
+
+      <div class="form-actions">
+        <button id="case-import-confirm-btn" type="button" class="primary-btn" data-requires-auth>儲存到 Firebase</button>
+      </div>
+    </dialog>
+
     <dialog id="asset-modal" class="form-modal">
       <div class="dialog-head">
         <div class="dialog-head-copy">
@@ -2555,6 +2788,8 @@
         importedProjectSheets: [],
         importedCases: [],
         importedCaseSheets: [],
+        caseImportStaging: [],
+        caseImportEditingId: "",
         photoQueue: [],
         scanQueue: [],
         loanAssetQueue: [],
@@ -2814,6 +3049,15 @@
         loanRecordNote: document.querySelector("#loan-record-note"),
         loanRecordDeleteButton: document.querySelector("#loan-record-delete-btn"),
         caseImportInput: document.querySelector("#case-import-input"),
+        caseImportModal: document.querySelector("#case-import-modal"),
+        caseImportModalTitle: document.querySelector("#case-import-modal-title"),
+        caseImportModalMeta: document.querySelector("#case-import-modal-meta"),
+        caseImportModalClose: document.querySelector("#case-import-modal-close"),
+        caseImportStaging: document.querySelector("#case-import-staging"),
+        caseImportSummary: document.querySelector("#case-import-summary"),
+        caseImportConfirmBtn: document.querySelector("#case-import-confirm-btn"),
+        caseImportSelectAllBtn: document.querySelector("#case-import-select-all-btn"),
+        caseImportClearBtn: document.querySelector("#case-import-clear-btn"),
         caseSearchInput: document.querySelector("#case-search-input"),
         caseSearchButtons: [...document.querySelectorAll("[data-case-search-field]")],
         caseSelectAllButton: document.querySelector("#case-select-all-btn"),
@@ -3619,6 +3863,21 @@
           });
       }
 
+      function isPopupUnsupportedError(error) {
+        const message = String(error?.message || error?.code || "").toLowerCase();
+        return (
+          message.includes("popup blocked") ||
+          message.includes("popup_blocked") ||
+          message.includes("popup-blocked") ||
+          message.includes("popup-closed") ||
+          message.includes("popup_closed") ||
+          message.includes("operation-not-supported-in-this-environment") ||
+          message.includes("auth/popup") ||
+          message.includes("web-storage-unsupported") ||
+          message.includes("network-request-failed")
+        );
+      }
+
       async function signInWithGoogle(options = {}) {
         const { preferRedirect = false } = options;
         const auth = await ensureFirebaseAuthPersistence();
@@ -3638,14 +3897,14 @@
           persistDriveAccessToken(state.accessToken);
           return state.user;
         } catch (error) {
-          const message = String(error?.message || error?.code || "").toLowerCase();
-          if (
-            message.includes("popup blocked") ||
-            message.includes("popup_blocked") ||
-            message.includes("popup-blocked") ||
-            message.includes("operation-not-supported-in-this-environment")
-          ) {
-            throw new Error(getFriendlyAuthErrorMessage(error));
+          if (isPopupUnsupportedError(error)) {
+            sessionStorage.setItem(AUTO_LOGIN_SESSION_KEY, "1");
+            try {
+              await auth.signInWithRedirect(provider);
+              return null;
+            } catch (redirectError) {
+              throw new Error(getFriendlyAuthErrorMessage(redirectError));
+            }
           }
           throw error;
         }
@@ -7085,8 +7344,12 @@
               allowedUsers = normalizeAllowedUserRecords(ownAllowedUser ? [ownAllowedUser] : []);
             } catch (error) {
               if (isPermissionDeniedError(error)) {
+                const blockedEmail = state.user?.email || "你的 Gmail";
+                const blockedMessage = `${blockedEmail} 尚未加入可登入白名單，請聯繫管理員（kpptja.2026@gmail.com）開通後再試。`;
                 await signOutUser({ suppressAutoLogin: true });
-                updateSyncBadge("此 Gmail 尚未開通", "error");
+                updateSyncBadge("尚未開通的 Gmail，已登出", "error");
+                setAuthGateMessage(blockedMessage);
+                openAuthGateModal();
                 renderAll();
                 return;
               }
@@ -7095,8 +7358,12 @@
           }
           state.allowedUsers = allowedUsers;
           if (!isAuthorizedUser(state.user)) {
+            const blockedEmail = state.user?.email || "你的 Gmail";
+            const blockedMessage = `${blockedEmail} 尚未加入可登入白名單，請聯繫管理員（kpptja.2026@gmail.com）開通後再試。`;
             await signOutUser({ suppressAutoLogin: true });
-            updateSyncBadge("此 Gmail 尚未開通", "error");
+            updateSyncBadge("尚未開通的 Gmail，已登出", "error");
+            setAuthGateMessage(blockedMessage);
+            openAuthGateModal();
             renderAll();
             return;
           }
@@ -8707,25 +8974,212 @@
         updateSyncBadge("分析個案 Excel 中...", "loading");
         try {
           const parsed = await parseCaseWorkbook(file);
-          state.importedCases = parsed.records;
+          state.caseImportStaging = parsed.records.map((record) => ({
+            ...record,
+            _stagingId: record.id || createStableId("case-staging", `${file.name}-${Math.random()}`),
+            _selected: true,
+            _removed: false,
+          }));
           state.importedCaseSheets = parsed.sheetSummaries;
-          renderCasePreview();
-          await autoSyncImportedRecords({
-            label: "個案資料",
-            records: state.importedCases,
-            inputElement: event.target,
-            persist: (records) => replaceImportedCaseRecords(records),
-            successMessage: `個案資料已自動同步到 Firebase，共 ${parsed.records.length} 筆`,
-            failureMessage: "個案資料同步失敗",
-          });
+          state.caseImportEditingId = "";
+          updateSyncBadge(
+            `已解析 ${parsed.records.length} 筆，請確認後按「儲存到 Firebase」`,
+            "loading",
+          );
+          openCaseImportModal(file.name);
         } catch (error) {
           console.error(error);
-          state.importedCases = [];
+          state.caseImportStaging = [];
           state.importedCaseSheets = [];
           updateSyncBadge("個案 Excel 解析失敗", "error");
+        } finally {
           event.target.value = "";
         }
         renderCasePreview();
+      }
+
+      function openCaseImportModal(fileName = "") {
+        if (!elements.caseImportModal) return;
+        if (elements.caseImportModalMeta) {
+          const sheetText = state.importedCaseSheets
+            .filter((sheet) => !sheet.skipped)
+            .map((sheet) => `${sheet.sheetName} ${sheet.count} 筆`)
+            .join("、") || "（無可匯入的工作表）";
+          elements.caseImportModalMeta.textContent = `${fileName ? `檔案：${fileName}　` : ""}解析結果：${sheetText}`;
+        }
+        renderCaseImportStaging();
+        if (!elements.caseImportModal.open) {
+          elements.caseImportModal.showModal();
+        }
+      }
+
+      function closeCaseImportModal() {
+        if (elements.caseImportModal?.open) {
+          elements.caseImportModal.close();
+        }
+        state.caseImportStaging = [];
+        state.caseImportEditingId = "";
+      }
+
+      function getCaseImportSelectedRecords() {
+        return state.caseImportStaging.filter((item) => item._selected && !item._removed);
+      }
+
+      function renderCaseImportStaging() {
+        if (!elements.caseImportStaging) return;
+        const records = state.caseImportStaging;
+        const total = records.length;
+        const selectedCount = getCaseImportSelectedRecords().length;
+        if (elements.caseImportSummary) {
+          elements.caseImportSummary.textContent = `已勾選 ${selectedCount} / ${total} 筆`;
+        }
+        if (elements.caseImportConfirmBtn) {
+          elements.caseImportConfirmBtn.disabled = selectedCount === 0;
+          elements.caseImportConfirmBtn.textContent = selectedCount > 0
+            ? `儲存到 Firebase（${selectedCount} 筆）`
+            : "儲存到 Firebase";
+        }
+        if (total === 0) {
+          elements.caseImportStaging.className = "case-import-staging empty-state";
+          elements.caseImportStaging.textContent = "尚無資料。";
+          return;
+        }
+        elements.caseImportStaging.className = "case-import-staging";
+        elements.caseImportStaging.innerHTML = records
+          .map((entry) => renderCaseImportRow(entry))
+          .join("");
+      }
+
+      function renderCaseImportRow(entry) {
+        const id = entry._stagingId;
+        const isEditing = state.caseImportEditingId === id;
+        const isRemoved = Boolean(entry._removed);
+        const checkboxAttrs = `${entry._selected ? "checked" : ""} ${isRemoved ? "disabled" : ""}`;
+        const meta = [
+          entry.sheetCategory ? `類別：${escapeHtml(entry.sheetCategory)}` : "",
+          entry.unitName || entry.vendorName ? `單位 / 廠商：${escapeHtml(entry.unitName || entry.vendorName)}` : "",
+          entry.intakeStaff ? `接案：${escapeHtml(entry.intakeStaff)}` : "",
+          entry.caseManager ? `承辦：${escapeHtml(entry.caseManager)}` : "",
+          entry.visitCommittee ? `委員：${escapeHtml(entry.visitCommittee)}` : "",
+          entry.disabilityCategory ? `障別：${escapeHtml(entry.disabilityCategory)}` : "",
+          entry.visitDate ? `訪視：${escapeHtml(entry.visitDate)}` : "",
+        ]
+          .filter(Boolean)
+          .join("　");
+
+        const editForm = isEditing
+          ? `
+            <div class="case-import-edit-grid">
+              <label>編號 <input type="text" data-edit-field="caseCode" data-id="${id}" value="${escapeHtml(entry.caseCode || "")}" /></label>
+              <label>姓名 <input type="text" data-edit-field="name" data-id="${id}" value="${escapeHtml(entry.name || "")}" /></label>
+              <label>單位 / 廠商 <input type="text" data-edit-field="unitName" data-id="${id}" value="${escapeHtml(entry.unitName || entry.vendorName || "")}" /></label>
+              <label>接案人員 <input type="text" data-edit-field="intakeStaff" data-id="${id}" value="${escapeHtml(entry.intakeStaff || "")}" /></label>
+              <label>承辦 <input type="text" data-edit-field="caseManager" data-id="${id}" value="${escapeHtml(entry.caseManager || "")}" /></label>
+              <label>訪視委員 <input type="text" data-edit-field="visitCommittee" data-id="${id}" value="${escapeHtml(entry.visitCommittee || "")}" /></label>
+              <label>障別 <input type="text" data-edit-field="disabilityCategory" data-id="${id}" value="${escapeHtml(entry.disabilityCategory || "")}" /></label>
+              <label>訪視日期 <input type="text" data-edit-field="visitDate" data-id="${id}" value="${escapeHtml(entry.visitDate || "")}" /></label>
+            </div>
+          `
+          : "";
+
+        return `
+          <div class="case-import-row${isRemoved ? " is-removed" : ""}" data-staging-id="${id}">
+            <input type="checkbox" data-action="toggle-import-row" data-id="${id}" ${checkboxAttrs} />
+            <div class="case-import-row-body">
+              <div class="case-import-row-title">${escapeHtml(entry.caseCode || "（無編號）")}　${escapeHtml(entry.name || "")}</div>
+              <div class="case-import-row-meta">${meta || "（無其他資訊）"}</div>
+              ${editForm}
+            </div>
+            <div class="case-import-row-actions">
+              <button type="button" data-action="edit-import-row" data-id="${id}">${isEditing ? "完成" : "編輯"}</button>
+              <button type="button" class="danger" data-action="${isRemoved ? "restore-import-row" : "remove-import-row"}" data-id="${id}">${isRemoved ? "還原" : "刪除"}</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function findCaseImportRow(id) {
+        return state.caseImportStaging.find((item) => item._stagingId === id);
+      }
+
+      function toggleCaseImportRowSelection(id) {
+        const row = findCaseImportRow(id);
+        if (!row || row._removed) return;
+        row._selected = !row._selected;
+        renderCaseImportStaging();
+      }
+
+      function setAllCaseImportSelection(selected) {
+        state.caseImportStaging.forEach((row) => {
+          if (!row._removed) row._selected = selected;
+        });
+        renderCaseImportStaging();
+      }
+
+      function setCaseImportRowEditing(id) {
+        state.caseImportEditingId = state.caseImportEditingId === id ? "" : id;
+        renderCaseImportStaging();
+      }
+
+      function removeCaseImportRow(id) {
+        const row = findCaseImportRow(id);
+        if (!row) return;
+        row._removed = true;
+        row._selected = false;
+        if (state.caseImportEditingId === id) state.caseImportEditingId = "";
+        renderCaseImportStaging();
+      }
+
+      function restoreCaseImportRow(id) {
+        const row = findCaseImportRow(id);
+        if (!row) return;
+        row._removed = false;
+        row._selected = true;
+        renderCaseImportStaging();
+      }
+
+      function updateCaseImportRowField(id, field, value) {
+        const row = findCaseImportRow(id);
+        if (!row) return;
+        row[field] = normalizeText(value);
+        if (field === "unitName") {
+          row.vendorName = row[field];
+          row.displayItem = row[field];
+        }
+      }
+
+      async function handleCaseImportConfirm() {
+        const selected = getCaseImportSelectedRecords();
+        if (!selected.length) {
+          updateSyncBadge("沒有勾選任何個案", "warn");
+          return;
+        }
+        if (!state.user) {
+          updateSyncBadge("請先登入 Google / Firebase 再儲存", "warn");
+          return;
+        }
+        updateSyncBadge(`儲存 ${selected.length} 筆個案到 Firebase 中...`, "loading");
+        if (elements.caseImportConfirmBtn) {
+          elements.caseImportConfirmBtn.disabled = true;
+        }
+        const recordsToWrite = selected.map((entry) => {
+          const { _stagingId, _selected, _removed, ...rest } = entry;
+          return rest;
+        });
+        try {
+          await replaceImportedCaseRecords(recordsToWrite);
+          await refreshRemoteData({ quiet: true });
+          state.importedCases = recordsToWrite;
+          updateSyncBadge(`個案資料已儲存到 Firebase，共 ${recordsToWrite.length} 筆`, "success");
+          closeCaseImportModal();
+          renderCasePreview();
+        } catch (error) {
+          console.error(error);
+          updateSyncBadge(`個案資料儲存失敗：${error.message || "未知錯誤"}`, "error");
+          if (elements.caseImportConfirmBtn) {
+            elements.caseImportConfirmBtn.disabled = false;
+          }
+        }
       }
 
       async function openPhotoModalFromDataset(dataset) {
@@ -9209,6 +9663,49 @@
         elements.caseClearSelectionButton.addEventListener("click", clearCaseRowSelection);
         elements.caseDeleteSelectedButton.addEventListener("click", handleSelectedCaseDelete);
         elements.caseImportInput.addEventListener("change", handleCaseImport);
+        if (elements.caseImportModalClose) {
+          elements.caseImportModalClose.addEventListener("click", () => {
+            closeCaseImportModal();
+            updateSyncBadge("已取消個案匯入", "idle");
+          });
+        }
+        if (elements.caseImportModal) {
+          elements.caseImportModal.addEventListener("cancel", (event) => {
+            event.preventDefault();
+            closeCaseImportModal();
+            updateSyncBadge("已取消個案匯入", "idle");
+          });
+        }
+        if (elements.caseImportConfirmBtn) {
+          elements.caseImportConfirmBtn.addEventListener("click", handleCaseImportConfirm);
+        }
+        if (elements.caseImportSelectAllBtn) {
+          elements.caseImportSelectAllBtn.addEventListener("click", () => setAllCaseImportSelection(true));
+        }
+        if (elements.caseImportClearBtn) {
+          elements.caseImportClearBtn.addEventListener("click", () => setAllCaseImportSelection(false));
+        }
+        if (elements.caseImportStaging) {
+          elements.caseImportStaging.addEventListener("click", (event) => {
+            const button = event.target.closest("button[data-action]");
+            if (button) {
+              const id = button.dataset.id;
+              if (button.dataset.action === "edit-import-row") setCaseImportRowEditing(id);
+              if (button.dataset.action === "remove-import-row") removeCaseImportRow(id);
+              if (button.dataset.action === "restore-import-row") restoreCaseImportRow(id);
+              return;
+            }
+            const checkbox = event.target.closest("input[type='checkbox'][data-action='toggle-import-row']");
+            if (checkbox) {
+              toggleCaseImportRowSelection(checkbox.dataset.id);
+            }
+          });
+          elements.caseImportStaging.addEventListener("input", (event) => {
+            const input = event.target.closest("input[data-edit-field]");
+            if (!input) return;
+            updateCaseImportRowField(input.dataset.id, input.dataset.editField, input.value);
+          });
+        }
         elements.caseSearchInput.addEventListener("input", renderCaseTable);
         elements.caseSearchButtons.forEach((button) => {
           button.addEventListener("click", () => {
