@@ -1720,6 +1720,97 @@
         }
       }
 
+      /* === 借還快選彈窗 === */
+      .loan-quickpick-modal {
+        width: min(420px, calc(100vw - 24px));
+        padding: 24px;
+        border-radius: 22px;
+      }
+
+      .loan-quickpick-actions {
+        display: grid;
+        gap: 12px;
+        margin: 18px 0 14px;
+      }
+
+      .loan-quickpick-btn {
+        padding: 18px 22px;
+        border-radius: 16px;
+        font-size: 1.05rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+      }
+
+      .loan-quickpick-hint {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.6;
+      }
+
+      /* === 狀況清單手機卡片化 === */
+      @media (max-width: 640px) {
+        .loan-status-table {
+          min-width: 0 !important;
+          table-layout: auto;
+        }
+
+        .loan-status-table,
+        .loan-status-table tbody,
+        .loan-status-table tr,
+        .loan-status-table td {
+          display: block;
+          width: 100%;
+        }
+
+        .loan-status-table thead {
+          display: none;
+        }
+
+        .loan-status-table tr {
+          margin-bottom: 12px;
+          padding: 14px 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(31, 54, 120, 0.1);
+          background: rgba(255, 255, 255, 0.96);
+          box-shadow: 0 6px 18px rgba(20, 46, 128, 0.06);
+        }
+
+        .loan-status-table tr:hover {
+          background: rgba(255, 255, 255, 0.96);
+        }
+
+        .loan-status-table td {
+          padding: 6px 0;
+          border-top: none;
+          white-space: normal;
+          min-width: 0 !important;
+        }
+
+        .loan-status-table td::before {
+          content: attr(data-label);
+          display: block;
+          font-size: 0.74rem;
+          letter-spacing: 0.06em;
+          color: var(--muted);
+          text-transform: uppercase;
+          margin-bottom: 2px;
+        }
+
+        .loan-status-table td:last-child::before {
+          content: "";
+        }
+
+        .loan-status-table .row-actions {
+          margin-top: 8px;
+        }
+
+        .loan-status-surface .table-wrap {
+          overflow: visible;
+          min-height: 0;
+        }
+      }
+
       /* === 個案匯入預覽 modal === */
       .case-import-modal {
         width: min(960px, calc(100vw - 24px));
@@ -2412,6 +2503,23 @@
       </div>
     </dialog>
 
+    <dialog id="loan-quickpick-modal" class="form-modal loan-quickpick-modal">
+      <div class="dialog-head">
+        <div class="dialog-head-copy">
+          <p class="eyebrow">借用 / 歸還</p>
+          <h3>請選擇要進行的作業</h3>
+        </div>
+        <div class="toolbar">
+          <button id="loan-quickpick-close" type="button" class="ghost-btn icon-btn" title="關閉" aria-label="關閉">✕</button>
+        </div>
+      </div>
+      <div class="loan-quickpick-actions">
+        <button id="loan-quickpick-borrow" type="button" class="primary-btn loan-quickpick-btn" data-action="borrow" data-requires-auth>📤 借用</button>
+        <button id="loan-quickpick-return" type="button" class="ghost-btn loan-quickpick-btn" data-action="return" data-requires-auth>📥 歸還</button>
+      </div>
+      <p class="loan-quickpick-hint">關閉後可在「狀況清單」標題列再點借用 / 歸還。</p>
+    </dialog>
+
     <dialog id="loan-modal" class="form-modal loan-modal">
       <div class="dialog-head">
         <div class="dialog-head-copy">
@@ -2973,6 +3081,10 @@
         loanForm: document.querySelector("#loan-form"),
         loanModal: document.querySelector("#loan-modal"),
         loanModalTitle: document.querySelector("#loan-modal-title"),
+        loanQuickPickModal: document.querySelector("#loan-quickpick-modal"),
+        loanQuickPickClose: document.querySelector("#loan-quickpick-close"),
+        loanQuickPickBorrow: document.querySelector("#loan-quickpick-borrow"),
+        loanQuickPickReturn: document.querySelector("#loan-quickpick-return"),
         loanModePill: document.querySelector("#loan-mode-pill"),
         loanModeDescription: document.querySelector("#loan-mode-description"),
         loanStepIndicator: document.querySelector("#loan-step-indicator"),
@@ -3838,6 +3950,9 @@
                   updateSyncBadge("已登入，正在同步資料...", "loading");
                 }
                 await refreshRemoteData();
+                if (!wasSignedIn && state.currentView === "loans") {
+                  openLoanQuickPick();
+                }
               } catch (error) {
                 console.error(error);
                 updateSyncBadge("Firebase 同步失敗", "error");
@@ -6363,6 +6478,20 @@
         }
       }
 
+      function openLoanQuickPick() {
+        if (!elements.loanQuickPickModal) return;
+        if (elements.loanQuickPickModal.open) return;
+        if (elements.loanModal?.open) return;
+        if (!state.user || !isAuthorizedUser(state.user)) return;
+        elements.loanQuickPickModal.showModal();
+      }
+
+      function closeLoanQuickPick() {
+        if (elements.loanQuickPickModal?.open) {
+          elements.loanQuickPickModal.close();
+        }
+      }
+
       function syncLoanIdentity() {
         if (!state.user) {
           elements.loanPerson.readOnly = false;
@@ -6997,42 +7126,42 @@
             const fullTargetTitle = targetLabels.length ? targetLabels.join("、") : "-";
             return `
               <tr>
-                <td>
+                <td data-label="借用日期">
                   <div class="loan-status-cell">
                     <span class="loan-status-main">${escapeHtml(entry.date || formatDateLabel(entry.createdAt))}</span>
                   </div>
                 </td>
-                <td>
+                <td data-label="輔具編號">
                   <div class="loan-status-cell">
                     <span class="loan-status-main loan-status-code">${escapeHtml(entry.assetCode || "-")}</span>
                   </div>
                 </td>
-                <td>
+                <td data-label="輔具名稱">
                   <div class="loan-status-cell">
                     <span class="loan-status-main" title="${escapeHtml(entry.assetName || "-")}">${escapeHtml(truncateText(entry.assetName || "-", 14))}</span>
                   </div>
                 </td>
-                <td>
+                <td data-label="借用人">
                   <div class="loan-status-cell">
                     <span class="loan-status-main" title="${escapeHtml(fullTargetTitle)}">${escapeHtml(truncateText(targetPreview, 12))}</span>
                     <span class="loan-status-sub" title="${escapeHtml(unitPreview)}">${escapeHtml(truncateText(unitPreview, 14))}</span>
                     ${targetMeta ? `<span class="loan-status-sub">${escapeHtml(targetMeta)}</span>` : ""}
                   </div>
                 </td>
-                <td>
+                <td data-label="動作">
                   <span class="chip">${entry.action === "borrow" ? "借出" : "歸還"}</span>
                 </td>
-                <td>
+                <td data-label="借用人員">
                   <div class="loan-status-cell">
                     <span class="loan-status-main" title="${escapeHtml(personPreview)}">${escapeHtml(truncateText(personPreview, 12))}</span>
                   </div>
                 </td>
-                <td>
+                <td data-label="備註">
                   <div class="loan-status-cell">
                     <span class="loan-status-main" title="${escapeHtml(normalizeText(entry.note) || "-")}">${escapeHtml(notePreview)}</span>
                   </div>
                 </td>
-                <td>
+                <td data-label="操作">
                   ${
                     adminMode
                       ? `<div class="row-actions">
@@ -9213,6 +9342,11 @@
               applySidebarState();
             }
             renderAll();
+            if (button.dataset.viewTarget === "loans") {
+              openLoanQuickPick();
+            } else {
+              closeLoanQuickPick();
+            }
           });
         });
 
@@ -9507,6 +9641,31 @@
         });
         elements.loanBorrowButton.addEventListener("click", () => openLoanModal("borrow"));
         elements.loanReturnButton.addEventListener("click", () => openLoanModal("return"));
+
+        if (elements.loanQuickPickClose) {
+          elements.loanQuickPickClose.addEventListener("click", closeLoanQuickPick);
+        }
+        if (elements.loanQuickPickModal) {
+          elements.loanQuickPickModal.addEventListener("cancel", (event) => {
+            event.preventDefault();
+            closeLoanQuickPick();
+          });
+          elements.loanQuickPickModal.addEventListener("click", (event) => {
+            if (event.target === elements.loanQuickPickModal) closeLoanQuickPick();
+          });
+        }
+        if (elements.loanQuickPickBorrow) {
+          elements.loanQuickPickBorrow.addEventListener("click", () => {
+            closeLoanQuickPick();
+            openLoanModal("borrow");
+          });
+        }
+        if (elements.loanQuickPickReturn) {
+          elements.loanQuickPickReturn.addEventListener("click", () => {
+            closeLoanQuickPick();
+            openLoanModal("return");
+          });
+        }
         elements.loanResetButton.addEventListener("click", () => {
           resetLoanWorkflow();
         });
