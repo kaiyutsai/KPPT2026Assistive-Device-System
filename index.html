@@ -6448,11 +6448,9 @@
       function openLoanModal(action = state.loanMode) {
         if (!state.user) return;
         const nextMode = getLoanActionMeta(action).value;
-        if (nextMode !== state.loanMode) {
-          state.loanMode = nextMode;
-          elements.loanDate.valueAsDate = new Date();
-          resetLoanWorkflow();
-        }
+        state.loanMode = nextMode;
+        elements.loanDate.valueAsDate = new Date();
+        resetLoanWorkflow();
         syncLoanIdentity();
         if (!elements.loanDate.value) {
           elements.loanDate.valueAsDate = new Date();
@@ -8518,19 +8516,27 @@
         if (files.length === 0) return;
         const meta = getLoanActionMeta(state.loanMode);
         const isMultiBatch = event.target === elements.loanQrPhotoInput;
-        const manualCode = files.length === 1 ? normalizeAssetCode(elements.loanAssetCode.value) : "";
+        const fallbackManualCode =
+          files.length === 1 ? normalizeAssetCode(elements.loanAssetCode.value) : "";
+        elements.loanAssetCode.value = "";
+        event.target.value = "";
         updateSyncBadge(`辨識${meta.label}設備 ${files.length} 張中...`, "loading");
         let recognizedCount = 0;
         let unmatchedCount = 0;
         let borrowedCount = 0;
         let duplicateCount = 0;
         for (const file of files) {
+          let decoded = null;
           try {
-            const decoded = await decodeQrFromFile(file);
-            const code = manualCode || decoded.code || extractAssetCode(file.name);
-            const asset = getDecoratedAssets("project").find(
-              (entry) => normalizeAssetCode(entry.code) === normalizeAssetCode(code),
-            );
+            decoded = await decodeQrFromFile(file);
+            const decodedCode = normalizeAssetCode(decoded.code);
+            const code =
+              decodedCode || (files.length === 1 ? fallbackManualCode : "") || extractAssetCode(file.name);
+            const asset = code
+              ? getDecoratedAssets("project").find(
+                  (entry) => normalizeAssetCode(entry.code) === normalizeAssetCode(code),
+                )
+              : null;
             if (asset) {
               const result = addLoanAssetToQueue(asset);
               if (result.ok) {
@@ -8541,16 +8547,15 @@
               } else if (result.reason === "duplicate") {
                 duplicateCount += 1;
               }
-            } else if (!asset) {
+            } else {
               unmatchedCount += 1;
             }
           } catch (error) {
             console.error(error);
             unmatchedCount += 1;
+          } finally {
+            if (decoded?.previewUrl) URL.revokeObjectURL(decoded.previewUrl);
           }
-        }
-        if (manualCode) {
-          elements.loanAssetCode.value = "";
         }
         elements.loanQrSingleInput.value = "";
         elements.loanQrPhotoInput.value = "";
