@@ -2849,8 +2849,8 @@
     <dialog id="busy-overlay" class="busy-overlay" aria-live="polite" aria-busy="true">
       <div class="busy-card">
         <div class="busy-spinner" aria-hidden="true"></div>
-        <strong>上傳中，請稍後</strong>
-        <p id="busy-message">系統正在處理照片與同步資料。</p>
+        <strong id="busy-title">請稍候</strong>
+        <p id="busy-message">系統正在處理資料。</p>
       </div>
     </dialog>
 
@@ -3112,6 +3112,7 @@
         uploadMatchedButton: document.querySelector("#upload-matched-btn"),
         busyOverlay: document.querySelector("#busy-overlay"),
         busyMessage: document.querySelector("#busy-message"),
+        busyTitle: document.querySelector("#busy-title"),
         loanBorrowButton: document.querySelector("#loan-borrow-btn"),
         loanReturnButton: document.querySelector("#loan-return-btn"),
         loanForm: document.querySelector("#loan-form"),
@@ -3829,12 +3830,15 @@
         }
       }
 
-      function setBusyState(visible, message = "系統正在處理照片與同步資料。") {
+      function setBusyState(visible, message = "系統正在處理資料。", title = "請稍候") {
         if (!elements.busyOverlay) return;
         state.busyCount = visible ? state.busyCount + 1 : Math.max(0, state.busyCount - 1);
         const active = state.busyCount > 0;
+        if (elements.busyTitle) {
+          elements.busyTitle.textContent = active ? title : "請稍候";
+        }
         if (elements.busyMessage) {
-          elements.busyMessage.textContent = active ? message : "系統正在處理照片與同步資料。";
+          elements.busyMessage.textContent = active ? message : "系統正在處理資料。";
         }
         if (typeof elements.busyOverlay.showModal === "function") {
           if (active && !elements.busyOverlay.open) {
@@ -3994,7 +3998,7 @@
                 }
                 if (!wasSignedIn) {
                   updateSyncBadge("已登入，正在同步資料...", "loading");
-                  setBusyState(true, "已登入，正在準備您的資料，請稍候...");
+                  setBusyState(true, "已登入，正在準備您的資料，請稍候...", "資料讀取中");
                 }
                 try {
                   await refreshRemoteData();
@@ -8259,12 +8263,10 @@
         }
       }
 
-      async function decodeWithJsQr(image) {
+      function tryJsQrAtScale(image, scale) {
         if (!window.jsQR) return "";
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d", { willReadFrequently: true });
-        const longestSide = Math.max(image.width, image.height);
-        const scale = longestSide > 1800 ? 1800 / longestSide : 1;
         canvas.width = Math.max(1, Math.round(image.width * scale));
         canvas.height = Math.max(1, Math.round(image.height * scale));
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
@@ -8273,6 +8275,24 @@
           inversionAttempts: "attemptBoth",
         });
         return normalizeText(result?.data || "");
+      }
+
+      async function decodeWithJsQr(image) {
+        if (!window.jsQR) return "";
+        const longestSide = Math.max(image.width, image.height);
+        const scales = [];
+        if (longestSide > 1800) scales.push(1800 / longestSide);
+        scales.push(1);
+        if (longestSide < 1200) scales.push(2);
+        for (const scale of scales) {
+          try {
+            const value = tryJsQrAtScale(image, scale);
+            if (value) return value;
+          } catch (error) {
+            console.warn("jsQR scale attempt failed", scale, error);
+          }
+        }
+        return "";
       }
 
       function extractAssetCode(value = "") {
@@ -8664,7 +8684,7 @@
         if (summary.recognized) parts.push(`成功加入 ${summary.recognized} 件`);
         if (summary.borrowedPreview) parts.push(`其中 ${summary.borrowedPreview} 件目前借出中`);
         if (summary.duplicate) parts.push(`${summary.duplicate} 張已在清單中`);
-        if (summary.noQr) parts.push(`${summary.noQr} 張未掃到 QR 碼（畫面太暗或太遠）`);
+        if (summary.noQr) parts.push(`${summary.noQr} 張未掃到 QR 碼（請拉近 QR、避免反光、對焦再拍一次）`);
         if (summary.qrNotCode) parts.push(`${summary.qrNotCode} 張 QR 內容不像設備編號`);
         if (summary.notInList.length) parts.push(`找不到編號：${summary.notInList.join("、")}`);
         if (summary.errors) parts.push(`${summary.errors} 張照片解析失敗`);
