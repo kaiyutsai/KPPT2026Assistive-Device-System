@@ -2545,12 +2545,10 @@
                 <h4 id="loan-scan-title">掃 QR 碼</h4>
                 <div id="loan-action-display" class="field field-display">借出</div>
               </div>
-              <p id="loan-scan-hint" class="loan-scan-hint" hidden>先拍照掃碼，可拍一張或多張，系統會自動帶出設備資料。</p>
-              <input id="loan-qr-single-input" type="file" accept="image/*" capture="environment" hidden />
+              <p id="loan-scan-hint" class="loan-scan-hint" hidden>先拍照掃碼，一張可拍多個 QR 同框、也可連拍多張，系統會自動帶出設備資料。</p>
               <input id="loan-qr-photo-input" type="file" accept="image/*" capture="environment" multiple hidden />
               <div class="loan-scan-buttons">
                 <button id="loan-open-multi-scan-btn" type="button" class="primary-btn" data-requires-auth>📷 拍照掃碼</button>
-                <button id="loan-open-single-scan-btn" type="button" class="ghost-btn" data-requires-auth>單張</button>
               </div>
               <div class="loan-scan-meta">
                 <label id="loan-borrow-note-wrap" class="loan-scan-note">
@@ -3102,9 +3100,7 @@
         loanReviewTitle: document.querySelector("#loan-review-title"),
         loanReviewCount: document.querySelector("#loan-review-count"),
         loanAssetCode: document.querySelector("#loan-asset-code"),
-        loanQrSingleInput: document.querySelector("#loan-qr-single-input"),
         loanQrPhotoInput: document.querySelector("#loan-qr-photo-input"),
-        loanOpenSingleScanButton: document.querySelector("#loan-open-single-scan-btn"),
         loanOpenMultiScanButton: document.querySelector("#loan-open-multi-scan-btn"),
         loanAction: document.querySelector("#loan-action"),
         loanStepScan: document.querySelector("#loan-step-scan"),
@@ -3193,7 +3189,10 @@
 
       function normalizeAssetCode(value) {
         return normalizeText(value)
-          .replace(/[\s_\-]+/g, "")
+          .replace(/[\s　_\-\/\\.·•・]+/g, "")
+          .replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xff10 + 0x30))
+          .replace(/[Ａ-Ｚ]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xff21 + 0x41))
+          .replace(/[ａ-ｚ]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xff41 + 0x41))
           .replace(/[a-z]/g, (letter) => letter.toUpperCase());
       }
 
@@ -6433,7 +6432,6 @@
         elements.loanReviewTitle.textContent = meta.value === "return" ? "歸還資料確認" : "借用資料填寫";
         elements.loanAssetCode.placeholder = meta.manualPlaceholder;
         elements.loanDetailsAssetCode.placeholder = `${meta.manualPlaceholder}（此步驟也可補掃）`;
-        elements.loanOpenSingleScanButton.textContent = "單張";
         elements.loanOpenMultiScanButton.textContent = "📷 拍照掃碼";
         elements.loanBorrowFields.classList.toggle("loan-section-hidden", meta.value !== "borrow");
         elements.loanConfirmBorrowFields.classList.toggle("loan-section-hidden", meta.value !== "borrow");
@@ -6466,7 +6464,7 @@
           elements.loanModal.showModal();
         }
         requestAnimationFrame(() => {
-          elements.loanOpenSingleScanButton?.focus();
+          elements.loanOpenMultiScanButton?.focus();
         });
       }
 
@@ -8194,15 +8192,17 @@
       }
 
       async function decodeWithBarcodeDetector(file) {
-        if (!("BarcodeDetector" in window)) return "";
+        if (!("BarcodeDetector" in window)) return [];
         try {
           const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
           const bitmap = await createImageBitmap(file);
           const detected = await detector.detect(bitmap);
           bitmap.close?.();
-          return normalizeText(detected?.[0]?.rawValue || "");
+          return Array.isArray(detected)
+            ? detected.map((item) => normalizeText(item?.rawValue || "")).filter(Boolean)
+            : [];
         } catch (error) {
-          return "";
+          return [];
         }
       }
 
@@ -8223,11 +8223,10 @@
       }
 
       function extractAssetCode(value = "") {
-        const source = normalizeText(value);
+        const source = normalizeAssetCode(value);
         const candidates =
           source.match(/[\u4e00-\u9fffA-Za-z]{1,6}回?\d{2,6}|[A-Za-z]{1,6}\d{2,6}/gu) || [];
         return candidates
-          .map((item) => normalizeAssetCode(item))
           .filter(Boolean)
           .sort((a, b) => b.length - a.length)[0] || "";
       }
@@ -8235,13 +8234,22 @@
       async function decodeQrFromFile(file) {
         const previewUrl = URL.createObjectURL(file);
         const image = await loadImage(previewUrl);
-        const detectorValue = await decodeWithBarcodeDetector(file);
-        const jsQrValue = detectorValue ? "" : await decodeWithJsQr(image);
-        const rawText = detectorValue || jsQrValue || "";
+        const detectorValues = await decodeWithBarcodeDetector(file);
+        let rawTexts = Array.isArray(detectorValues) ? detectorValues.filter(Boolean) : [];
+        if (rawTexts.length === 0) {
+          const jsQrValue = await decodeWithJsQr(image);
+          if (jsQrValue) rawTexts = [jsQrValue];
+        }
+        const codes = rawTexts
+          .map((text) => extractAssetCode(text))
+          .filter(Boolean);
+        const primaryRawText = rawTexts[0] || "";
         return {
           previewUrl,
-          rawText,
-          code: extractAssetCode(rawText || file.name),
+          rawText: primaryRawText,
+          rawTexts,
+          code: codes[0] || extractAssetCode(file.name),
+          codes: codes.length > 0 ? codes : [extractAssetCode(file.name)].filter(Boolean),
         };
       }
 
@@ -8492,7 +8500,6 @@
         elements.loanDetailsAssetCode.value = "";
         elements.loanNote.value = "";
         elements.loanReturnNote.value = "";
-        elements.loanQrSingleInput.value = "";
         elements.loanQrPhotoInput.value = "";
         elements.loanDate.valueAsDate = new Date();
         elements.loanReturnDate.valueAsDate = new Date();
@@ -8515,66 +8522,98 @@
         const files = [...(event.target.files || [])];
         if (files.length === 0) return;
         const meta = getLoanActionMeta(state.loanMode);
-        const isMultiBatch = event.target === elements.loanQrPhotoInput;
         const fallbackManualCode =
           files.length === 1 ? normalizeAssetCode(elements.loanAssetCode.value) : "";
         elements.loanAssetCode.value = "";
         event.target.value = "";
-        updateSyncBadge(`辨識${meta.label}設備 ${files.length} 張中...`, "loading");
-        let recognizedCount = 0;
-        let unmatchedCount = 0;
-        let borrowedCount = 0;
-        let duplicateCount = 0;
-        for (const file of files) {
-          let decoded = null;
-          try {
-            decoded = await decodeQrFromFile(file);
-            const decodedCode = normalizeAssetCode(decoded.code);
-            const code =
-              decodedCode || (files.length === 1 ? fallbackManualCode : "") || extractAssetCode(file.name);
-            const asset = code
-              ? getDecoratedAssets("project").find(
-                  (entry) => normalizeAssetCode(entry.code) === normalizeAssetCode(code),
-                )
-              : null;
-            if (asset) {
-              const result = addLoanAssetToQueue(asset);
-              if (result.ok) {
-                recognizedCount += 1;
-                if (result.reason === "borrowed-preview") {
-                  borrowedCount += 1;
-                }
-              } else if (result.reason === "duplicate") {
-                duplicateCount += 1;
+        if (elements.loanOpenMultiScanButton) elements.loanOpenMultiScanButton.disabled = true;
+        const busyMessage = `辨識${meta.label}設備 ${files.length} 張照片中，請稍候...`;
+        updateSyncBadge(busyMessage, "loading");
+        setBusyState(true, busyMessage);
+        const summary = {
+          recognized: 0,
+          duplicate: 0,
+          borrowedPreview: 0,
+          noQr: 0,
+          qrNotCode: 0,
+          notInList: [],
+          errors: 0,
+        };
+        try {
+          for (const file of files) {
+            let decoded = null;
+            try {
+              decoded = await decodeQrFromFile(file);
+              const rawText = decoded.rawText || "";
+              const decodedCodes = Array.isArray(decoded.codes) ? decoded.codes : [];
+              const candidateCodes = decodedCodes.length
+                ? decodedCodes.map((c) => normalizeAssetCode(c)).filter(Boolean)
+                : [
+                    normalizeAssetCode(
+                      (files.length === 1 ? fallbackManualCode : "") || extractAssetCode(file.name),
+                    ),
+                  ].filter(Boolean);
+              if (candidateCodes.length === 0) {
+                if (!rawText) summary.noQr += 1;
+                else summary.qrNotCode += 1;
+                continue;
               }
-            } else {
-              unmatchedCount += 1;
+              const projectAssets = getDecoratedAssets("project");
+              const seenInThisPhoto = new Set();
+              for (const finalCode of candidateCodes) {
+                if (seenInThisPhoto.has(finalCode)) continue;
+                seenInThisPhoto.add(finalCode);
+                const asset = projectAssets.find(
+                  (entry) => normalizeAssetCode(entry.code) === finalCode,
+                );
+                if (!asset) {
+                  if (!summary.notInList.includes(finalCode)) summary.notInList.push(finalCode);
+                  continue;
+                }
+                const result = addLoanAssetToQueue(asset);
+                if (result.ok) {
+                  summary.recognized += 1;
+                  if (result.reason === "borrowed-preview") summary.borrowedPreview += 1;
+                } else if (result.reason === "duplicate") {
+                  summary.duplicate += 1;
+                }
+              }
+            } catch (error) {
+              console.error(error);
+              summary.errors += 1;
+            } finally {
+              if (decoded?.previewUrl) URL.revokeObjectURL(decoded.previewUrl);
             }
-          } catch (error) {
-            console.error(error);
-            unmatchedCount += 1;
-          } finally {
-            if (decoded?.previewUrl) URL.revokeObjectURL(decoded.previewUrl);
           }
+        } finally {
+          setBusyState(false);
+          if (elements.loanOpenMultiScanButton) elements.loanOpenMultiScanButton.disabled = false;
+          elements.loanQrPhotoInput.value = "";
         }
-        elements.loanQrSingleInput.value = "";
-        elements.loanQrPhotoInput.value = "";
-        if (recognizedCount > 0) {
-          const extraHint =
-            state.loanMode === "return" && state.loanAssetQueue.some((item) => !item.isReturnable)
-              ? "，其中部分設備目前沒有借出紀錄"
-              : "";
-          const resultMessage = `已辨識 ${recognizedCount} 件${borrowedCount ? `，其中 ${borrowedCount} 件目前借出中` : ""}${duplicateCount ? `，${duplicateCount} 件重複掃描` : ""}${unmatchedCount ? `，${unmatchedCount} 件未匹配` : ""}${extraHint}`;
-          updateSyncBadge(`${resultMessage}，可繼續加入或按下一步`, borrowedCount || duplicateCount || unmatchedCount ? "warn" : "success");
-        } else {
-          if (duplicateCount > 0 && unmatchedCount === 0) {
-            updateSyncBadge(`這些設備已經在目前清單裡，共 ${duplicateCount} 件`, "warn");
-          } else if (duplicateCount > 0) {
-            updateSyncBadge(`${duplicateCount} 件重複掃描，${unmatchedCount} 件未匹配`, "warn");
-          } else {
-            updateSyncBadge(`${meta.label}設備未匹配到清單`, "warn");
-          }
-        }
+
+        const parts = [];
+        if (summary.recognized) parts.push(`成功加入 ${summary.recognized} 件`);
+        if (summary.borrowedPreview) parts.push(`其中 ${summary.borrowedPreview} 件目前借出中`);
+        if (summary.duplicate) parts.push(`${summary.duplicate} 張已在清單中`);
+        if (summary.noQr) parts.push(`${summary.noQr} 張未掃到 QR 碼（畫面太暗或太遠）`);
+        if (summary.qrNotCode) parts.push(`${summary.qrNotCode} 張 QR 內容不像設備編號`);
+        if (summary.notInList.length) parts.push(`找不到編號：${summary.notInList.join("、")}`);
+        if (summary.errors) parts.push(`${summary.errors} 張照片解析失敗`);
+        const extraHint =
+          state.loanMode === "return" && state.loanAssetQueue.some((item) => !item.isReturnable)
+            ? "（部分設備目前沒有借出紀錄）"
+            : "";
+        const hasIssue =
+          summary.duplicate ||
+          summary.noQr ||
+          summary.qrNotCode ||
+          summary.notInList.length ||
+          summary.errors;
+        const message = parts.length
+          ? `${parts.join("，")}${extraHint}`
+          : `這 ${files.length} 張${meta.label}照片都沒有匹配到輔具`;
+        const tone = summary.recognized > 0 ? (hasIssue ? "warn" : "success") : "warn";
+        updateSyncBadge(message, tone);
       }
 
       async function handleSinglePhoto(event) {
@@ -9746,9 +9785,6 @@
           }
           input.click();
         };
-        elements.loanOpenSingleScanButton.addEventListener("click", async () => {
-          await openLoanScanPicker(elements.loanQrSingleInput);
-        });
         elements.loanOpenMultiScanButton.addEventListener("click", async () => {
           await openLoanScanPicker(elements.loanQrPhotoInput);
         });
@@ -9764,7 +9800,6 @@
           queueLoanAssetByCode(elements.loanDetailsAssetCode.value, true);
           elements.loanDetailsAssetCode.value = "";
         });
-        elements.loanQrSingleInput.addEventListener("change", handleLoanQrPhotos);
         elements.loanQrPhotoInput.addEventListener("change", handleLoanQrPhotos);
         const handleLoanSelectionToggle = (event) => {
           const checkbox = event.target.closest("input[data-action='toggle-return-asset']");
