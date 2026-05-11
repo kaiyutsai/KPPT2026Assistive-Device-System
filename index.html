@@ -6305,7 +6305,14 @@
       }
 
       function populateAssetCodeOptions() {
-        elements.assetCodeOptions.innerHTML = getDecoratedAssets("project")
+        const seen = new Set();
+        elements.assetCodeOptions.innerHTML = getAllDecoratedAssets()
+          .filter((asset) => {
+            const code = normalizeAssetCode(asset.code);
+            if (!code || seen.has(code)) return false;
+            seen.add(code);
+            return true;
+          })
           .map((asset) => `<option value="${asset.code}">${asset.name}</option>`)
           .join("");
       }
@@ -8263,7 +8270,7 @@
         }
       }
 
-      function tryJsQrAtScale(image, scale) {
+      function tryJsQrAtScale(image, scale, threshold = 0) {
         if (!window.jsQR) return "";
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d", { willReadFrequently: true });
@@ -8271,6 +8278,16 @@
         canvas.height = Math.max(1, Math.round(image.height * scale));
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        if (threshold > 0) {
+          const data = imageData.data;
+          for (let i = 0; i < data.length; i += 4) {
+            const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            const v = lum >= threshold ? 255 : 0;
+            data[i] = v;
+            data[i + 1] = v;
+            data[i + 2] = v;
+          }
+        }
         const result = window.jsQR(imageData.data, imageData.width, imageData.height, {
           inversionAttempts: "attemptBoth",
         });
@@ -8284,12 +8301,24 @@
         if (longestSide > 1800) scales.push(1800 / longestSide);
         scales.push(1);
         if (longestSide < 1200) scales.push(2);
+        // 第一輪：原色直接解（多數標籤白底適用）
         for (const scale of scales) {
           try {
-            const value = tryJsQrAtScale(image, scale);
+            const value = tryJsQrAtScale(image, scale, 0);
             if (value) return value;
           } catch (error) {
             console.warn("jsQR scale attempt failed", scale, error);
+          }
+        }
+        // 第二輪：套亮度二值化（救黃底 / 反光 / 對比低的標籤）
+        for (const threshold of [140, 110, 170, 90]) {
+          for (const scale of scales) {
+            try {
+              const value = tryJsQrAtScale(image, scale, threshold);
+              if (value) return value;
+            } catch (error) {
+              console.warn("jsQR threshold attempt failed", scale, threshold, error);
+            }
           }
         }
         return "";
