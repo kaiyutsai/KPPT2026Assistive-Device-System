@@ -2856,6 +2856,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
@@ -8333,14 +8334,89 @@
           .sort((a, b) => b.length - a.length)[0] || "";
       }
 
+      async function decodeWithZXing(image) {
+        const ZXing = window.ZXing || window.ZXingLibrary || window.ZXingBrowser;
+        const ReaderCtor =
+          ZXing?.BrowserQRCodeReader ||
+          ZXing?.BrowserMultiFormatReader ||
+          null;
+        if (!ReaderCtor) return [];
+        try {
+          const reader = new ReaderCtor();
+          const single =
+            (typeof reader.decodeFromImageElement === "function" &&
+              (await reader.decodeFromImageElement(image).catch(() => null))) ||
+            null;
+          if (single) {
+            const text = normalizeText(single.text || single.getText?.() || "");
+            return text ? [text] : [];
+          }
+        } catch (error) {
+          // fall through
+        }
+        return [];
+      }
+
+      function canvasToImageElement(canvas) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = canvas.toDataURL("image/png");
+        });
+      }
+
+      async function decodeRegion(image, x, y, w, h, collect) {
+        if (w <= 8 || h <= 8) return;
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          ctx.drawImage(image, x, y, w, h, 0, 0, w, h);
+          if (window.jsQR) {
+            const imageData = ctx.getImageData(0, 0, w, h);
+            const result = window.jsQR(imageData.data, w, h, { inversionAttempts: "attemptBoth" });
+            if (result?.data) collect(result.data);
+          }
+          const regionImg = await canvasToImageElement(canvas);
+          const zx = await decodeWithZXing(regionImg);
+          if (Array.isArray(zx)) zx.forEach(collect);
+        } catch (error) {
+          // 略過此 region
+        }
+      }
+
       async function decodeQrFromFile(file) {
         const previewUrl = URL.createObjectURL(file);
         const image = await loadImage(previewUrl);
-        const detectorValues = await decodeWithBarcodeDetector(file);
-        let rawTexts = Array.isArray(detectorValues) ? detectorValues.filter(Boolean) : [];
-        if (rawTexts.length === 0) {
-          const jsQrValue = await decodeWithJsQr(image);
-          if (jsQrValue) rawTexts = [jsQrValue];
+        const seen = new Set();
+        const rawTexts = [];
+        const collect = (value) => {
+          const text = normalizeText(value);
+          if (text && !seen.has(text)) {
+            seen.add(text);
+            rawTexts.push(text);
+          }
+        };
+        // 第一輪：全圖三 decoder 並行（最快路徑）
+        const [detectorValues, jsQrValue, zxingValues] = await Promise.all([
+          decodeWithBarcodeDetector(file).catch(() => []),
+          decodeWithJsQr(image).catch(() => ""),
+          decodeWithZXing(image).catch(() => []),
+        ]);
+        if (Array.isArray(detectorValues)) detectorValues.forEach(collect);
+        collect(jsQrValue);
+        if (Array.isArray(zxingValues)) zxingValues.forEach(collect);
+        // 第二輪：BarcodeDetector 沒回多個時，切上下/左右 region 各掃一次救多 QR
+        const detectorCount = Array.isArray(detectorValues) ? detectorValues.length : 0;
+        if (detectorCount < 2) {
+          const halfH = Math.floor(image.height / 2);
+          const halfW = Math.floor(image.width / 2);
+          await decodeRegion(image, 0, 0, image.width, halfH, collect);
+          await decodeRegion(image, 0, halfH, image.width, image.height - halfH, collect);
+          await decodeRegion(image, 0, 0, halfW, image.height, collect);
+          await decodeRegion(image, halfW, 0, image.width - halfW, image.height, collect);
         }
         const codes = rawTexts
           .map((text) => extractAssetCode(text))
@@ -8654,6 +8730,7 @@
           borrowedPreview: 0,
           noQr: 0,
           qrNotCode: 0,
+          qrNotCodeSamples: [],
           notInList: [],
           errors: 0,
         };
@@ -8672,8 +8749,14 @@
                     ),
                   ].filter(Boolean);
               if (candidateCodes.length === 0) {
-                if (!rawText) summary.noQr += 1;
-                else summary.qrNotCode += 1;
+                if (!rawText) {
+                  summary.noQr += 1;
+                } else {
+                  summary.qrNotCode += 1;
+                  if (summary.qrNotCodeSamples.length < 3) {
+                    summary.qrNotCodeSamples.push(truncateText(rawText, 30));
+                  }
+                }
                 continue;
               }
               const allAssets = getAllDecoratedAssets();
@@ -8710,13 +8793,24 @@
         }
 
         const parts = [];
-        if (summary.recognized) parts.push(`成功加入 ${summary.recognized} 件`);
+        if (summary.recognized) parts.push(`✅ 成功加入 ${summary.recognized} 件`);
         if (summary.borrowedPreview) parts.push(`其中 ${summary.borrowedPreview} 件目前借出中`);
         if (summary.duplicate) parts.push(`${summary.duplicate} 張已在清單中`);
-        if (summary.noQr) parts.push(`${summary.noQr} 張未掃到 QR 碼（請拉近 QR、避免反光、對焦再拍一次）`);
-        if (summary.qrNotCode) parts.push(`${summary.qrNotCode} 張 QR 內容不像設備編號`);
-        if (summary.notInList.length) parts.push(`找不到編號：${summary.notInList.join("、")}`);
-        if (summary.errors) parts.push(`${summary.errors} 張照片解析失敗`);
+        if (summary.noQr)
+          parts.push(
+            `⚠️ ${summary.noQr} 張完全沒讀到 QR 碼（可能：QR 太遠 / 反光 / 印刷模糊 / 對焦不準，建議拉近重拍）`,
+          );
+        if (summary.qrNotCode) {
+          const samples = summary.qrNotCodeSamples.length
+            ? `（QR 內容是：「${summary.qrNotCodeSamples.join("」「")}」）`
+            : "";
+          parts.push(`⚠️ ${summary.qrNotCode} 張 QR 有讀到、但內容不是輔具編號${samples}`);
+        }
+        if (summary.notInList.length)
+          parts.push(
+            `⚠️ QR 已成功讀取但資料庫沒這個編號：${summary.notInList.join("、")}（請確認該編號是否已匯入清冊）`,
+          );
+        if (summary.errors) parts.push(`❌ ${summary.errors} 張照片解析過程出錯`);
         const extraHint =
           state.loanMode === "return" && state.loanAssetQueue.some((item) => !item.isReturnable)
             ? "（部分設備目前沒有借出紀錄）"
@@ -8728,7 +8822,7 @@
           summary.notInList.length ||
           summary.errors;
         const message = parts.length
-          ? `${parts.join("，")}${extraHint}`
+          ? `${parts.join("\n")}${extraHint}`
           : `這 ${files.length} 張${meta.label}照片都沒有匹配到輔具`;
         const tone = summary.recognized > 0 ? (hasIssue ? "warn" : "success") : "warn";
         updateSyncBadge(message, tone);
