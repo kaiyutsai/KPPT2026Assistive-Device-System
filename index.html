@@ -3994,14 +3994,20 @@
                 }
                 if (!wasSignedIn) {
                   updateSyncBadge("已登入，正在同步資料...", "loading");
+                  setBusyState(true, "已登入，正在準備您的資料，請稍候...");
                 }
-                await refreshRemoteData();
-                if (!wasSignedIn && state.currentView === "loans") {
-                  openLoanQuickPick();
+                try {
+                  await refreshRemoteData();
+                  if (!wasSignedIn && state.currentView === "loans") {
+                    openLoanQuickPick();
+                  }
+                } finally {
+                  if (!wasSignedIn) setBusyState(false);
                 }
               } catch (error) {
                 console.error(error);
                 updateSyncBadge("Firebase 同步失敗", "error");
+                if (!wasSignedIn) setBusyState(false);
               }
             });
           })
@@ -6674,7 +6680,7 @@
       function queueLoanAssetByCode(code = "", showWarning = true) {
         const normalizedCode = normalizeAssetCode(code);
         if (!normalizedCode) return { ok: false, reason: "empty" };
-        const asset = getDecoratedAssets("project").find(
+        const asset = getAllDecoratedAssets().find(
           (entry) => normalizeAssetCode(entry.code) === normalizedCode,
         );
         if (!asset) {
@@ -8621,12 +8627,12 @@
                 else summary.qrNotCode += 1;
                 continue;
               }
-              const projectAssets = getDecoratedAssets("project");
+              const allAssets = getAllDecoratedAssets();
               const seenInThisPhoto = new Set();
               for (const finalCode of candidateCodes) {
                 if (seenInThisPhoto.has(finalCode)) continue;
                 seenInThisPhoto.add(finalCode);
-                const asset = projectAssets.find(
+                const asset = allAssets.find(
                   (entry) => normalizeAssetCode(entry.code) === finalCode,
                 );
                 if (!asset) {
